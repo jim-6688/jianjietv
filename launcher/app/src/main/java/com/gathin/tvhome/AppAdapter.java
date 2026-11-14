@@ -210,6 +210,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final Set<String> hidden;
     /** Apps pre-seeded into the App library's "added" set (config.xml library_apps); empty by default. */
     private final Set<String> libraryPreload;
+    /** config home_all_apps: list every launchable app, not only the ones with a TV (leanback) entry. */
+    private final boolean homeAllApps;
     private final boolean animations;
     private final boolean advancedEffects;
     private final boolean showLibrary;
@@ -240,6 +242,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.fillDock = cfg.fillDock;
         this.hidden = new HashSet<>(cfg.hiddenApps);
         this.libraryPreload = new HashSet<>(cfg.libraryApps);
+        this.homeAllApps = cfg.homeAllApps;
         this.animations = cfg.animations;
         this.advancedEffects = cfg.animations && cfg.advancedEffects;
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
@@ -280,12 +283,18 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         Set<String> added = new HashSet<>(LibraryApps.load(ctx));
         added.addAll(libraryPreload);
         Set<String> removed = LibraryApps.loadRemoved(ctx);
-        if (!added.isEmpty()) {
-            Set<String> seen = new HashSet<>(tvPackages);
+        // Apps that only declare a plain MAIN/LAUNCHER entry: all of them with home_all_apps, else only the ones
+        // the app library added. They stay out of tvPackages, so their tiles launch without the leanback
+        // category (an app without that category answers nothing when it is added).
+        if (homeAllApps || !added.isEmpty()) {
+            Set<String> listed = new HashSet<>(tvPackages);
+            listed.add(ctx.getPackageName());
             for (ResolveInfo ri : pm.queryIntentActivities(
                     new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
-                if (ri.activityInfo != null && added.contains(ri.activityInfo.packageName)
-                        && seen.add(ri.activityInfo.packageName)) found.add(ri);
+                if (ri.activityInfo == null || !ri.activityInfo.exported) continue;
+                String pkg = ri.activityInfo.packageName;
+                if (pkg == null || (!homeAllApps && !added.contains(pkg))) continue;
+                if (listed.add(pkg)) found.add(ri);   // else: already a tile, or the same app twice
             }
         }
         Map<String, Cards.Card> cardByPkg = new HashMap<>();
@@ -298,7 +307,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (ri.activityInfo == null) continue;
             String pkg = ri.activityInfo.packageName;
             if (pkg.equals(ctx.getPackageName()) || !ri.activityInfo.exported
-                    || !LibraryApps.visible(tvPackages.contains(pkg), hidden.contains(pkg), added.contains(pkg), removed.contains(pkg))) continue;
+                    || !LibraryApps.visible(tvPackages.contains(pkg), hidden.contains(pkg), added.contains(pkg), removed.contains(pkg), homeAllApps)) continue;
             ComponentName component = new ComponentName(pkg, ri.activityInfo.name);
             Cards.Card card = cardByPkg.get(pkg);
             if (card != null && !card.component.equals(component)) continue;   // the card stands in for this tile

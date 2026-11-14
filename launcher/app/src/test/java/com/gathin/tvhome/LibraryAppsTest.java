@@ -101,6 +101,19 @@ public class LibraryAppsTest {
         assertTrue(LibraryApps.visible(true, false, false, false));
     }
 
+    @Test public void homeAllAppsShowsPlainEntriesAndStillRespectsHiddenAndRemoved() {
+        // A settings page with only a MAIN/LAUNCHER entry: off Home by default, on it with home_all_apps.
+        assertFalse(LibraryApps.visible(false, false, false, false, false));
+        assertTrue(LibraryApps.visible(false, false, false, false, true));
+        // hidden_apps still wins, so the firmware's background services can be kept off.
+        assertFalse(LibraryApps.visible(false, true, false, false, true));
+        // As does an explicit removal from Home, which is why it can be undone in the app library.
+        assertFalse(LibraryApps.visible(false, false, false, true, true));
+        assertTrue(LibraryApps.visible(false, true, true, false, true));
+        // Leanback apps are unaffected either way.
+        assertTrue(LibraryApps.visible(true, false, false, false, false));
+    }
+
     @Test public void addingAdvancesPastCheckedAppsToTheNextMissingShortcut() {
         assertEquals(3, LibraryApps.nextFocus(1, 5, index -> index == 3 || index == 4));
         assertEquals(0, LibraryApps.nextFocus(4, 5, index -> index == 0 || index == 2));

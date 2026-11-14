@@ -165,6 +165,28 @@ adb shell 'media volume --stream 3 --set 60; sendevent /dev/input/event7 1 114 1
   `wallpaperVideoEnabled = false` —— 静态壁纸优先级高于视频壁纸，这是设计如此。要让视频壁纸生效，
   先在设置里取消选中收藏的那一张。
 
+## 程序坞里只有「应用圈」一个系统应用可选
+
+这台固件把桌面应用分成两套入口：只有 6 个应用声明了 TV 入口（`CATEGORY_LEANBACK_LAUNCHER`），
+其中系统应用只有 `com.tianci.appstore`（应用圈）；设置、媒体播放器、电视管家、主题、屏保等二十来个只声明
+普通的 `MAIN` + `LAUNCHER`。桌面默认只列声明 TV 入口的那些，所以“编辑程序坞”时能挑的只有这 6 个，
+想放个“设置”进去无处可选。
+
+```bash
+# 有 TV 入口的（桌面默认显示）
+adb shell 'cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER'
+# 只有普通入口的（默认不上桌面）
+adb shell 'cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER'
+```
+
+写 `"home_all_apps": true` 到 `config.json`（或 `config.xml` 的 `home_all_apps`）后，桌面列出全部可启动应用，
+长按卡片即为「添加到程序坞 / 移动 / 从主屏幕移除」。这些卡片用普通 `MAIN` 启动，不像 TV 应用那样带
+leanback 分类；实测 `com.coocaa.os.softsettings`（设置）、`com.tianci.localmedia`（媒体播放器）、
+`com.coocaa.tvmanager`（电视管家）用 `am start -a android.intent.action.MAIN -n <组件>` 都能正常打开。
+
+全开也把固件里的后台服务摆上了桌面（`CooDataServer`、`SkyAOD`、`tvhome 接管` 之类），不影响使用，
+嫌乱就长按卡片「从主屏幕移除」，或用 `hidden_apps` 一次排掉。
+
 ## 恢复与已知代价
 
 - 代价：酷开的**息屏显示（AOD）不再出现**。恢复（恢复后开机可能又变黑屏）：

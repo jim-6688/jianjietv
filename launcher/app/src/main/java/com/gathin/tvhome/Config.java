@@ -223,6 +223,12 @@ final class Config {
     final boolean wallpaperStillsEnabled;
     /** Which still-wallpaper manifest: "apple" (built-in) or a remote {"images":[...]} manifest URL/assets file. */
     final String wallpaperStillsManifest;
+    /**
+     * List every launchable app on Home, not only the ones with a TV (leanback) entry (config.xml,
+     * home_all_apps). Firmware like Skyworth's declares a leanback entry for a handful of apps and a plain
+     * MAIN/LAUNCHER one for the other twenty, which left the dock with nothing but the app store to choose from.
+     */
+    final boolean homeAllApps;
     /** Whether the overlay file was present and parsed. */
     final boolean overlayApplied;
     /** Festive skin from a theme (festival, festival_until, greeting, accent_color); {@link Festival#NONE} if none. */
@@ -309,7 +315,7 @@ final class Config {
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly,
                    int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
                    boolean wallpaperVideoEnabled, String wallpaperVideoManifest,
-                   boolean wallpaperStillsEnabled, String wallpaperStillsManifest) {
+                   boolean wallpaperStillsEnabled, String wallpaperStillsManifest, boolean homeAllApps) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -393,6 +399,7 @@ final class Config {
         this.wallpaperOrder = wallpaperOrder;
         this.wallpaperStillsEnabled = wallpaperStillsEnabled;
         this.wallpaperStillsManifest = wallpaperStillsManifest;
+        this.homeAllApps = homeAllApps;
         this.overlayApplied = overlayApplied;
         this.festival = festival;
         this.raceCalendar = Collections.unmodifiableList(raceCalendar);
@@ -508,6 +515,7 @@ final class Config {
         String wallpaperVideoManifest = res.getString(R.string.wallpaper_video_manifest).trim();
         boolean wallpaperStillsEnabled = res.getBoolean(R.bool.wallpaper_stills_enabled);
         String wallpaperStillsManifest = res.getString(R.string.wallpaper_stills_manifest).trim();
+        boolean homeAllApps = res.getBoolean(R.bool.home_all_apps);
         boolean tileMenu = res.getBoolean(R.bool.tile_menu);
         String vpn = res.getString(R.string.vpn_app).trim();
         boolean homeSettings = res.getBoolean(R.bool.show_home_settings_shortcut);
@@ -625,6 +633,7 @@ final class Config {
             wallpaperVideoManifest = string(json, "wallpaper_video_manifest", wallpaperVideoManifest).trim();
             wallpaperStillsEnabled = bool(json, "wallpaper_stills_enabled", wallpaperStillsEnabled);
             wallpaperStillsManifest = string(json, "wallpaper_stills_manifest", wallpaperStillsManifest).trim();
+            homeAllApps = bool(json, "home_all_apps", homeAllApps);
             tileMenu = bool(json, "tile_menu", tileMenu);
             vpn = string(json, "vpn_app", vpn);
             homeSettings = bool(json, "show_home_settings_shortcut", homeSettings);
@@ -811,7 +820,7 @@ final class Config {
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
-                wallpaperVideoEnabled, wallpaperVideoManifest, wallpaperStillsEnabled, wallpaperStillsManifest);
+                wallpaperVideoEnabled, wallpaperVideoManifest, wallpaperStillsEnabled, wallpaperStillsManifest, homeAllApps);
     }
 
     /**
