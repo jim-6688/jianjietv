@@ -1,0 +1,41 @@
+# 当贝 投影仪 / 电视盒子 起始去广告清单 (dangbei-android-tv)
+#
+# 状态: 起始清单 (starter)。通用部分已实测安全; 当贝专属部分默认注释, 需真机确认后启用。
+# 当贝设备多为投影仪/盒子, 运行 Android (当贝 OS 基于 Android)。除广告/推送外, 当贝会拦截
+# 第三方安装, 本清单不涉及该机制。
+#
+# 用法:
+#   枚举真机包名: TV_HOST=<IP> tools/tv.py "pm list packages | grep -i dangbei"
+#   停用:         TV_HOST=<IP> tools/disable.sh examples/dangbei-android-tv/debloat.txt
+#   守护:         TV_HOST=<IP> tools/guard.py  examples/dangbei-android-tv/debloat.txt
+#
+# 适配指南见 docs/devices/zh-cn-domestic-android-tv.md。
+
+# ===== 通用安全基线 (与 zh-cn-generic-android-tv 一致) =====
+com.google.android.feedback
+com.android.tv.feedbackconsent
+com.google.android.tv.bugreportsender
+com.google.android.onetimeinitializer
+com.android.federatedcompute.services
+com.android.ondevicepersonalization.services
+com.android.adservices.api
+com.google.android.tvrecommendations
+com.google.android.leanbacklauncher.recommendations
+com.google.android.partnersetup
+com.google.android.backdrop
+com.google.android.apps.tv.dreamx
+com.google.android.play.games
+com.google.android.videos
+com.google.android.youtube.tvmusic
+com.google.android.apps.mediashell
+android.autoinstalls.config.google.gtvpai
+com.android.printspooler
+com.google.android.syncadapters.calendar
+com.android.providers.calendar
+
+# ===== 当贝专属候选 (VERIFY FIRST: pm list packages | grep -i dangbei) =====
+# com.dangbei.ad                           # 广告服务 (假设)
+# com.dangbei.push                         # 推送
+# com.dangbei.recommend                     # 推荐内容
+# com.dangbei.market                       # 当贝市场 (可选)
+# com.dangbei.ota                          # OTA (谨慎)

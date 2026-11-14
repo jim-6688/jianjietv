@@ -14,10 +14,11 @@
             <corners android:radius="21dp" />
         </shape>
     </item>
+    <!-- Unfocused: deep frosted charcoal. Focused stays bright white (above) with dark text. -->
     <item>
         <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#2EFFFFFF" android:endColor="#14FFFFFF" />
-            <stroke android:width="1dp" android:color="#38FFFFFF" />
+            <gradient android:angle="270" android:startColor="#FF232B35" android:endColor="#FF171C23" />
+            <stroke android:width="1dp" android:color="#52FFFFFF" />
             <corners android:radius="21dp" />
         </shape>
     </item>

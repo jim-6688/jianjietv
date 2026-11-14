@@ -39,9 +39,14 @@ public class TileFitTest {
 
     @Test
     public void oneRowUnderATitledDockFits() {
+        int widthOnly = AppAdapter.tileWidthPx(INNER, 4, D);
         int w = AppAdapter.tileWidthPx(INNER, GRID_H, 4, 1, true, true, D);
-        assertTrue(w < AppAdapter.tileWidthPx(INNER, 4, D));
+        // 16:9 cards are shorter than the old 16:10 ones: at this grid height the width decides and
+        // the titled dock still fits without shrinking a single tile.
+        assertEquals(widthOnly, w);
         assertTrue(height(w, 1, true) <= GRID_H + 2);
+        // On a shorter screen the height limit must still shrink the tiles.
+        assertTrue(AppAdapter.tileWidthPx(INNER, 800, 4, 1, true, true, D) < widthOnly);
     }
 
     @Test
@@ -60,13 +65,18 @@ public class TileFitTest {
         int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(w), false, D);
         int needed = itemH * 4 + Math.round((AppAdapter.TOP_ROOM_DP + AppAdapter.COMPACT_BOTTOM_ROOM_DP) * D);
         assertTrue(needed + " > " + GRID_H, needed <= GRID_H + 2);
-        // With the compact spacing the width limit decides, not the height: no extra whitespace between tiles.
-        assertEquals(AppAdapter.tileWidthPx(INNER, 6, D), w);
+        // The 18dp name line is back under every card, so this many rows can be height-bound at 6 columns.
+        // It must still stay at or above MIN_HEIGHT_FIT of the width-only size and never exceed it.
+        int widthOnly = AppAdapter.tileWidthPx(INNER, 6, D);
+        int floor = Math.round(widthOnly * AppAdapter.MIN_HEIGHT_FIT);
+        assertTrue(w + " < " + floor, w >= floor);
+        assertTrue(w + " > " + widthOnly, w <= widthOnly);
     }
 
     @Test
     public void droppingTheTitleGivesBiggerTiles() {
-        assertTrue(AppAdapter.tileWidthPx(INNER, GRID_H, 4, 1, false, true, D)
-                > AppAdapter.tileWidthPx(INNER, GRID_H, 4, 1, true, true, D));
+        // At 846px both fits are width-bound now; use a shorter screen so the 104dp title matters again.
+        assertTrue(AppAdapter.tileWidthPx(INNER, 800, 4, 1, false, true, D)
+                > AppAdapter.tileWidthPx(INNER, 800, 4, 1, true, true, D));
     }
 }

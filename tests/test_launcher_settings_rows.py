@@ -17,6 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LAYOUT = ROOT / "launcher/app/src/main/res/layout/activity_launcher_settings.xml"
 ACTIVITY = ROOT / "launcher/app/src/main/java/com/gathin/tvhome/LauncherSettingsActivity.java"
+# The settings screen is bound by SettingsController, which both the drawer and the activity share, so the
+# numbers a row offers can live in either file.
+CONTROLLER = ROOT / "launcher/app/src/main/java/com/gathin/tvhome/SettingsController.java"
 STRINGS = ROOT / "launcher/app/src/main/res/values/strings.xml"
 GUIDE = ROOT / "docs" / "launcher.md"
 
@@ -129,6 +132,7 @@ class ScreenRows(unittest.TestCase):
     def setUp(self):
         self.layout_text = LAYOUT.read_text(encoding="utf-8")
         self.activity_text = ACTIVITY.read_text(encoding="utf-8")
+        self.binding_text = self.activity_text + CONTROLLER.read_text(encoding="utf-8")
         self.strings = english_strings(STRINGS.read_text(encoding="utf-8"))
         self.rows = row_labels(self.layout_text, self.activity_text, self.strings)
         self.section = detail_section(GUIDE.read_text(encoding="utf-8"), SUMMARY)
@@ -148,9 +152,9 @@ class ScreenRows(unittest.TestCase):
     def test_readme_names_the_numbers_under_each_row(self):
         columns = numbered("columns_label", self.layout_text)
         under_dock = numbered("rows_below_dock_label", self.layout_text)
-        self.assertEqual(columns, ["4", "5", "6", "7"])
+        self.assertEqual(columns, ["3", "4", "5", "6"])
         self.assertEqual(under_dock, ["0", "1", "2", "3"])
-        opacities = re.search(r"DOCK_OPACITIES\s*=\s*\{([0-9,\s]+)\}", self.activity_text).group(1)
+        opacities = re.search(r"DOCK_OPACITIES\s*=\s*\{([0-9,\s]+)\}", self.binding_text).group(1)
         opacities = [value.strip() for value in opacities.split(",") if value.strip()]
         section = normalise(self.section)
         self.assertIn("%s, %s, %s or %s" % tuple(columns), section)

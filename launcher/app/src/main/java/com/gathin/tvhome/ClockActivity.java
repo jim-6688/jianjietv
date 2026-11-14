@@ -14,7 +14,7 @@ import android.view.View;
 public class ClockActivity extends Activity {
     @Override
     protected void attachBaseContext(android.content.Context base) {
-        super.attachBaseContext(LauncherLocale.wrap(base));   // locale
+        super.attachBaseContext(UiScale.wrap(LauncherLocale.wrap(base)));   // locale
     }
 
 

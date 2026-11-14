@@ -21,8 +21,8 @@ public class DockCornersTest {
         assertEquals(0f, DockDecoration.evenPaddingPx(1000, 0, 200, 30f), 0.001f);
     }
 
-    @Test public void evenPaddingStaysPositiveAndBelowTheCellFromFourToSevenColumns() {
-        for (int columns = 4; columns <= 7; columns++) {
+    @Test public void evenPaddingStaysPositiveAndBelowTheCellFromThreeToSixColumns() {
+        for (int columns = 3; columns <= 6; columns++) {
             int tile = AppAdapter.tileWidthPx(INNER, columns, DENSITY);
             float gap = INNER / (float) columns - tile;
             float pad = DockDecoration.evenPaddingPx(INNER, columns, tile, Float.MAX_VALUE);

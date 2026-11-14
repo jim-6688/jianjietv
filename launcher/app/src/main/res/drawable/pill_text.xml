@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 顶栏按钮的文字/图标色：香槟金（聚焦时用深色，落在亮色聚焦底上）。 -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true" android:color="#FF111111" />
-    <item android:color="#FFFFFFFF" />
+    <item android:color="#FFE6D2A6" />
 </selector>

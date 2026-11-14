@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="96dp"
+    android:viewportWidth="320" android:viewportHeight="96">
+
+    <!-- 电视 -->
+    <rect x="12" y="32" width="66" height="38" rx="4"
+        android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="3" />
+    <rect x="18" y="38" width="42" height="26" rx="2"
+        android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="2" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M35 70 L35 78 M60 70 L60 78 M28 78 L67 78" />
+
+    <!-- 箭头 1 -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/on_surface_variant" android:strokeWidth="3"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M88 50 L104 50 M98 44 L106 50 L98 56" />
+
+    <!-- 设置齿轮 -->
+    <circle cx="132" cy="50" r="14" android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="3" />
+    <circle cx="132" cy="50" r="5.5" android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="3" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M132 36 L132 30 M146 50 L152 50 M132 64 L132 70 M118 50 L124 50" />
+
+    <!-- 箭头 2 -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/on_surface_variant" android:strokeWidth="3"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M162 50 L178 50 M172 44 L180 50 L172 56" />
+
+    <!-- Wi-Fi -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M190 44 A16 16 0 0 1 222 44" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M196 50 A10 10 0 0 1 216 50" />
+    <circle cx="206" cy="56" r="2.5" android:fillColor="@color/brand" />
+
+    <!-- 箭头 3 -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/on_surface_variant" android:strokeWidth="3"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M230 50 L246 50 M240 44 L248 50 L240 56" />
+
+    <!-- 完成对勾 -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="@color/brand" android:strokeWidth="3"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M262 52 L270 60 L286 42" />
+</vector>

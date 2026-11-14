@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 数据源面板：暗色遮罩（点外部关闭）+ 贴右侧的半透明抽屉。
+     顶部是手机扫码配置（二维码 + 局域网地址），下面是内置/自定义源按钮与已上传的 py。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/backdrop"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:focusable="false"
+    android:background="#99000000">
+
+    <!-- 贴右侧、全高：源一多就能上下滚动，遥控器按方向键会带着滚。 -->
+    <ScrollView
+        android:id="@+id/panel"
+        android:layout_width="460dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="@drawable/settings_drawer"
+        android:clickable="true"
+        android:focusable="false"
+        android:fillViewport="true"
+        android:paddingStart="26dp"
+        android:paddingEnd="26dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="28dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/film_sources"
+                android:textColor="#FFFFFFFF"
+                android:textSize="30sp" />
+
+            <TextView
+                android:id="@+id/sourceCurrent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="#FFACB8C1"
+                android:textSize="15sp" />
+
+            <!-- 手机扫码配置：左边二维码，右边地址与说明。没有局域网地址时整块隐藏。 -->
+            <LinearLayout
+                android:id="@+id/scanBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/settings_choice_bg"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="14dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/scanQr"
+                    android:layout_width="116dp"
+                    android:layout_height="116dp"
+                    android:background="#FFFFFFFF"
+                    android:contentDescription="@string/film_sources_scan_title"
+                    android:scaleType="fitCenter" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/film_sources_scan_title"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="17sp" />
+
+                    <TextView
+                        android:id="@+id/scanUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="#FFEAD9B2"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/film_sources_scan_hint"
+                        android:textColor="#FFACB8C1"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 已上传的 py：名字 + 局域网地址，一行一条。 -->
+            <LinearLayout
+                android:id="@+id/pyList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/sourceList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="vertical" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/film_sources_hint"
+                android:textColor="#FFACB8C1"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

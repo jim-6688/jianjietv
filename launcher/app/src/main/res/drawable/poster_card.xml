@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 影视墙海报卡底：深色圆角，描边默认透明，聚焦时由代码换成高亮色。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#222A33" />
+    <corners android:radius="14dp" />
+    <stroke android:width="2dp" android:color="#00000000" />
+</shape>

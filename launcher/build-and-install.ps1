@@ -8,12 +8,16 @@
 #                             input_key_keycodes and app_keys; re-pass on every install
 #        [-HomeKeyService]    remotes whose Home button sends KEYCODE_ALL_APPS (Xiaomi sticks)
 #        [-RestoreKeyServices] grants WRITE_SECURE_SETTINGS for restore_key_services (helpers back after a force stop); revoked without it
+#        [-DomesticTv]        Coocaa / Skyworth power-on fixes: leave the stock launcher enabled, switch
+#                             on the Home-key helper and WRITE_SECURE_SETTINGS, merge the power-on
+#                             config and turn off the AOD overlay (docs/devices/skyworth-9ta01-s81p.md)
 param(
     [string]$TvHost = $env:TV_HOST,
     [string]$StockLauncher = '',
     [switch]$InputKeyService,
     [switch]$HomeKeyService,
-    [switch]$RestoreKeyServices
+    [switch]$RestoreKeyServices,
+    [switch]$DomesticTv
 )
 $ErrorActionPreference = 'Stop'
 # Pipe plain UTF-8 to native commands; the default here prepends a BOM that corrupts the first command.
@@ -21,6 +25,14 @@ $OutputEncoding = New-Object System.Text.UTF8Encoding $false
 if (-not $TvHost) { throw 'pass -TvHost <tv ip> or set $env:TV_HOST' }
 $env:TV_HOST = $TvHost
 Set-Location $PSScriptRoot
+
+if ($DomesticTv) {
+    # One switch brings in the two helpers the power-on fix needs, and never disables the vendor launcher.
+    $HomeKeyService = $true
+    $RestoreKeyServices = $true
+    if (-not $StockLauncher) { $StockLauncher = 'none' }
+    Write-Host 'Domestic TV mode: no stock launcher disabled; Home is taken with set-home-activity.'
+}
 
 # SKIP_BUILD=1 installs the APK already built (tools\docker-build.ps1 builds it in Docker, with no JDK here).
 if ($env:SKIP_BUILD -ne '1') {
@@ -182,4 +194,35 @@ $out = ($step | & $py -I ..\tools\tv.py --batch) -join "`n"
 Write-Host $out
 # Only a line that is the marker and nothing else counts: tv.py --batch echoes the step, which contains it too.
 if (($out -split '\r?\n') -cnotcontains $mark) { throw "WRITE_SECURE_SETTINGS is not in the state this install asked for ($mark missing): $hint. The launcher is installed and is Home. Check by hand: tools\tv.py 'dumpsys package com.gathin.tvhome'" }
+if ($DomesticTv) {
+    # Same three reversible fixes as build-and-install.sh's domestic_tv_setup(). Nothing is disabled
+    # or uninstalled. Merge into a theme's config.json instead of overwriting it; an apostrophe in a
+    # theme value becomes \u0027 so the JSON survives one single-quoted printf on the TV.
+    $cfgDir = '/sdcard/Android/data/com.gathin.tvhome/files'
+    $cfg = "$cfgDir/config.json"
+    $old = ((& $py -I ..\tools\tv.py "mkdir -p $cfgDir; cat $cfg 2>/dev/null || echo {}") -join "`n").Trim()
+    if (-not $old) { $old = '{}' }
+    try { $data = $old | ConvertFrom-Json } catch { throw "$cfg is not valid JSON; left untouched" }
+    if (-not $data) { $data = [pscustomobject]@{} }
+    $data | Add-Member -NotePropertyName power_on_home_always -NotePropertyValue $true -Force
+    $data | Add-Member -NotePropertyName restore_key_services -NotePropertyValue $true -Force
+    $data | Add-Member -NotePropertyName stock_home_redirect -NotePropertyValue 'com.tianci.movieplatform' -Force
+    $json = ($data | ConvertTo-Json -Compress).Replace("'", '\u0027')
+    ("printf '%s' '" + $json + "' > " + $cfg) | & $py -I ..\tools\tv.py --batch
+    if ($LASTEXITCODE -ne 0) { throw "could not write $cfg; the launcher is installed and is Home" }
+
+    # App-ops are written lazily: write-settings must follow the deny or a reboot restores the overlay.
+    $aodPkg = ((& $py -I ..\tools\tv.py 'pm path com.coocaa.aod') -join "`n")
+    if ($aodPkg -match 'package:') {
+        $step = 'cmd appops set com.coocaa.aod SYSTEM_ALERT_WINDOW deny 2>/dev/null; appops write-settings 2>/dev/null; cmd appops get com.coocaa.aod 2>/dev/null | grep SYSTEM_ALERT_WINDOW'
+        $aod = (($step | & $py -I ..\tools\tv.py --batch) -join "`n")
+        Write-Host $aod
+        if (-not (($aod -split "`n") | Where-Object { ($_ -replace '\r', '') -match '^\s*SYSTEM_ALERT_WINDOW: deny' })) {
+            throw 'could not turn off the Coocaa AOD overlay; Home may stay black at power-on'
+        }
+    } else {
+        Write-Host 'No com.coocaa.aod on this TV; the overlay fix was skipped.'
+    }
+    Write-Host 'Domestic TV setup done: power-on Home guard on, AOD overlay off.'
+}
 Write-Host 'Installed. Press Home on the remote to see it.'

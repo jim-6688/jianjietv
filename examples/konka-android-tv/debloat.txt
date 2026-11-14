@@ -1,0 +1,43 @@
+# 康佳 Android 电视 / 盒子 起始去广告清单 (konka-android-tv)
+#
+# 状态: 起始清单 (starter)。通用部分已实测安全; 康佳专属部分默认注释, 需真机确认后启用。
+# 已知真实包: com.konka.livelauncher (康佳桌面, 是 HOME)。禁用桌面前必须先安装 CleanYourTV
+# 并设为默认 HOME, 否则按 Home 无反应 (Home 防护会自动跳过当前唯一的 HOME)。
+#
+# 用法:
+#   枚举真机包名: TV_HOST=<IP> tools/tv.py "pm list packages | grep -i konka"
+#   停用:         TV_HOST=<IP> tools/disable.sh examples/konka-android-tv/debloat.txt
+#   守护:         TV_HOST=<IP> tools/guard.py  examples/konka-android-tv/debloat.txt
+#
+# 适配指南见 docs/devices/zh-cn-domestic-android-tv.md。
+
+# ===== 通用安全基线 (与 zh-cn-generic-android-tv 一致) =====
+com.google.android.feedback
+com.android.tv.feedbackconsent
+com.google.android.tv.bugreportsender
+com.google.android.onetimeinitializer
+com.android.federatedcompute.services
+com.android.ondevicepersonalization.services
+com.android.adservices.api
+com.google.android.tvrecommendations
+com.google.android.leanbacklauncher.recommendations
+com.google.android.partnersetup
+com.google.android.backdrop
+com.google.android.apps.tv.dreamx
+com.google.android.play.games
+com.google.android.videos
+com.google.android.youtube.tvmusic
+com.google.android.apps.mediashell
+android.autoinstalls.config.google.gtvpai
+com.android.printspooler
+com.google.android.syncadapters.calendar
+com.android.providers.calendar
+
+# ===== 康佳专属候选 (VERIFY FIRST: pm list packages | grep -i konka) =====
+# 注意: com.konka.livelauncher 是 HOME, 不要单独禁用; 仅当 CleanYourTV 已设为默认桌面后才可禁。
+# com.konka.advertise                      # 广告服务 (假设)
+# com.konka.push                           # 推送
+# com.konka.recommend                       # 推荐内容
+# com.konka.market                         # 康佳应用商店 (可选)
+# com.konka.health                          # 康佳健康等预装 (可选)
+# com.konka.livelauncher                   # 仅 CleanYourTV 接管 HOME 后禁用

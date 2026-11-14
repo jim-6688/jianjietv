@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+// 本轮「安装 TV 版」需要把桌面 APK 带在手机 App 里。构建时从 launcher 的输出复制最新 debug 包，
+// 不入库、不污染源码；launcher 还没构建时 App 会提示改用文件选择器。
+def tvApk = file('../../launcher/app/build/outputs/apk/debug/app-debug.apk')
+def generatedAssets = layout.buildDirectory.dir('generated/assets')
+
+def copyTvApk = tasks.register('copyTvApk', Copy) {
+    from(tvApk)
+    into(generatedAssets)
+    rename { 'tvhome.apk' }
+    onlyIf { tvApk.isFile() }
+}
+
+android {
+    namespace 'com.gathin.tvhome.mobile'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.gathin.tvhome.mobile'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '0.1'
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += generatedAssets.get().asFile.path
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+afterEvaluate {
+    tasks.named('preBuild').configure { dependsOn(copyTvApk) }
+}
+
+dependencies {
+    // ADB 协议、扫描、品牌资料全部用 Android 原生 API + JDK 实现，不引第三方运行时依赖。
+    // UI 用框架原生控件 + 自绘矢量图标 + 自定义圆角卡片/水波纹，避免 Material 组件带来的
+    // core 1.16（要求 compileSdk 35 / AGP 8.6，本机只有 SDK 34 + AGP 8.5.2，离线升不上去）。
+    testImplementation 'junit:junit:4.13.2'
+}

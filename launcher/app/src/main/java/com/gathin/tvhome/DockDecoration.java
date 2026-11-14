@@ -34,6 +34,12 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final boolean singleRow;
     /** dock_band_all: in a single row, the band runs behind every app instead of the dock apps only. */
     private final boolean bandAll;
+    /** The band's corner radius in dp (config.xml dock_radius). */
+    private final int radiusDp;
+    /** The band's padding around its tiles in dp (config.xml dock_padding). */
+    private final int paddingDp;
+    /** The band opacity in percent (dock_opacity), used to scale the glass gradient's alpha. */
+    private final int bandOpacity;
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
@@ -45,7 +51,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
      * @param singleRow   every app sits in the dock's row (single_row); the band covers the dock apps only, unless bandAll.
      * @param bandAll     with singleRow, the band runs behind every app in the row (dock_band_all).
      */
-    DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass,
+    DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, int radiusDp, int paddingDp, boolean lightGlass,
                    boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll) {
         this.dockSize = dockSize;
         this.singleRow = singleRow;
@@ -55,6 +61,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         this.lightGlass = lightGlass;
         this.evenPadding = evenPadding;
         this.bandVisible = bandVisible;
+        this.radiusDp = radiusDp;
+        this.paddingDp = paddingDp;
+        this.bandOpacity = opacity;
         band.setColor(translucent ? 0x8C121014 : (Math.round(opacity * 2.55f) << 24) | 0x141416);
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(density);
@@ -110,13 +119,13 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             }
         }
         if (!any) return;
-        float pad = 14 * density;
+        float pad = paddingDp * density;
         // The band can only draw inside the grid, and the first and last dock tiles sit 12dp in from its
         // edges: a full 14dp at the sides sliced the rounded ends flat (#454). Keep the sides, with the
         // 1dp edge line, inside the grid; the top and bottom have room.
         // 22dp at the sides (the grid's 10dp padding makes room): a focused first or last tile grows about 7dp
         // outwards and still keeps about the band's top margin from its rounded end.
-        float sidePad = 22 * density;
+        float sidePad = (paddingDp + 8) * density;
         float side = Math.max(0f, Math.min(sidePad, Math.min(rect.left, parent.getWidth() - rect.right) - density));
         float radius = AppAdapter.cornerRadius(cardWidth, density);
         if (evenPadding) {
@@ -128,9 +137,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             rect.inset(-even, -even);
             radius = radiusPx(radius, even);
         } else {
-            // dock_even_padding off: the band as before, with its fixed 26 dp corners.
+            // dock_even_padding off: the band with its dock_radius corners (default 28dp, a little more pill than before).
             rect.inset(singleRow ? -sidePad : -side, -pad);
-            radius = 26 * density;
+            radius = radiusDp * density;
         }
         if (singleRow) {
             // Tiles past the screen's edge: the band stops at the grid's edge with its rounded end instead of being
@@ -140,8 +149,13 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         }
         rect.bottom += namesRoom;
         if (lightGlass && (rect.top != shaderTop || rect.bottom != shaderBottom)) {
-            // The pills' glass (pill_bg: white, 18% fading to 8%), a little fainter over this much larger area.
-            band.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, 0x24FFFFFF, 0x0DFFFFFF,
+            // Dark frosted charcoal matching the pills (pill_bg), a little lighter over this much
+            // larger area so the wallpaper still shows through. Deep enough for white tile labels.
+            // The alpha now follows dock_opacity (30-100): at 100 it matches the old 0xB3/0x80 look,
+            // lower values let more of the wallpaper (e.g. the video) show through.
+            int top = (Math.round(bandOpacity / 100f * 0xB3) << 24) | 0x0A0E13;
+            int bottom = (Math.round(bandOpacity / 100f * 0x80) << 24) | 0x0A0E13;
+            band.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, top, bottom,
                     Shader.TileMode.CLAMP));
             shaderTop = rect.top;
             shaderBottom = rect.bottom;

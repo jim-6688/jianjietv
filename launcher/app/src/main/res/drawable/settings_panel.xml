@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deeper frosted window panel for the launcher settings: nearly opaque charcoal with a crisp
+     white rim, so the home wallpaper only shows faintly through and the text always reads. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#FA070A0E"
+                android:centerColor="#F7070A0E"
+                android:endColor="#EE070A0E" />
+            <stroke android:width="1.5dp" android:color="#40FFFFFF" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+</layer-list>

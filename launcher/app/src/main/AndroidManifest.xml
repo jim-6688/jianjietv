@@ -7,6 +7,9 @@
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- The home-screen weather label (HomeWeather) fetches China Weather Network over HTTPS; without
+         this the request fails instantly and the label stays hidden. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
@@ -21,6 +24,10 @@
     <!-- YaOS (Yandex TV OS): HDMI, AV and the tuner all play in com.yandex.tv.live, whose activities require
          this permission (protection level normal, so it is granted at install). Ignored on other TVs. -->
     <uses-permission android:name="yandex.tv.permission.ACCESS_TV_SOURCE" />
+    <!-- 「全部应用」列出电视上装了的每一个应用，系统应用也算：它们大多不声明 MAIN/LAUNCHER 入口，
+         只靠下面的 <queries> 查不到。这个权限只扩大「能看见哪些包」，不联网、不读应用数据。 -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <!-- Android 11+ package visibility: lets the launcher list the TV apps it shows as tiles, and the
          apps that declare a module card (docs/specs/card.md). -->
@@ -76,6 +83,7 @@
         android:banner="@drawable/banner"
         android:theme="@style/Theme.TvHome"
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:localeConfig="@xml/locales_config">
 
         <activity
@@ -110,7 +118,24 @@
             android:name=".LauncherSettingsActivity"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:screenOrientation="landscape" />
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.TvHome.SettingsWindow" />
+        <!-- 首页导航栏按「向下」弹出的影视分类面板。 -->
+        <activity
+            android:name=".FilmCategoriesActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.TvHome.SettingsWindow" />
+        <!-- 影视源面板：内置源做成按钮，点一下即切换影视 App 的配置源。 -->
+        <activity
+            android:name=".FilmSourcesActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.TvHome.SettingsWindow" />
         <!-- The system input switcher (com.android.tv.action.VIEW_INPUTS), which is what the remote's Input
              button becomes through the TV's Live TV app or InputKeyService. Disabled here and switched on by
              MainActivity only while handle_view_inputs is true (config.xml or a theme), for sets whose stock

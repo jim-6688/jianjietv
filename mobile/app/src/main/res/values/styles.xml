@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 纯框架主题：本机只有 SDK 34 + AGP 8.5.2，引 Material/AppCompat 会拉 core 1.16 要求 SDK 35，离线升不上去，
+         故 UIC 用框架原生控件 + 自绘矢量图标 + 自定义圆角卡片实现，这里只用框架自带主题属性。 -->
+    <style name="Theme.Mobile" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorBackground">@color/background</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/brand</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:colorPrimary">@color/brand</item>
+        <item name="android:colorAccent">@color/brand</item>
+    </style>
+
+    <!-- 功能 / 操作卡片：以 FrameLayout + 圆角描边背景实现，自带水波纹涟漪与柔和投影 -->
+    <style name="FeatureCard">
+        <item name="android:background">@drawable/bg_card</item>
+        <item name="android:foreground">?android:attr/selectableItemBackground</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:elevation">4dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 状态卡片（不可点） -->
+    <style name="StatusCard">
+        <item name="android:background">@drawable/bg_card_status</item>
+        <item name="android:padding">14dp</item>
+        <item name="android:elevation">3dp</item>
+    </style>
+
+    <style name="TextTitleLarge">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">22sp</item>
+    </style>
+
+    <style name="RowTitle">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/on_surface</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="RowSubtitle">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/on_surface_variant</item>
+        <item name="android:lineSpacingExtra">2dp</item>
+    </style>
+
+    <!-- 遥控器按键：正方形圆角卡片，图标在上文字在下，自带水波纹 -->
+    <style name="RemoteKey">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minHeight">66dp</item>
+        <item name="android:background">@drawable/bg_remote_key</item>
+        <item name="android:foreground">?android:attr/selectableItemBackgroundBorderless</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:elevation">3dp</item>
+        <item name="android:layout_margin">4dp</item>
+    </style>
+
+    <!-- 行内小按钮（应用管理里的 卸载/停用/启用） -->
+    <style name="Chip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">34dp</item>
+        <item name="android:minWidth">64dp</item>
+        <item name="android:background">@drawable/bg_card</item>
+        <item name="android:foreground">?android:attr/selectableItemBackgroundBorderless</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/brand</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 危险操作的小按钮（卸载 / 停用）：品牌色红描边 -->
+    <style name="ChipDanger" parent="Chip">
+        <item name="android:background">@drawable/bg_card_danger</item>
+        <item name="android:textColor">@color/danger</item>
+    </style>
+</resources>

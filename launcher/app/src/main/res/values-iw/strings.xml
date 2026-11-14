@@ -45,6 +45,8 @@
     <string name="vpn">VPN</string>
     <string name="vpn_off">ה־VPN כבוי</string>
     <string name="home_settings">בחירת מסך הבית כברירת מחדל</string>
+    <string name="stock_home">מסך הבית המקורי</string>
+    <string name="stock_home_gone">מסך הבית המקורי מושבת או הוסר</string>
     <string name="home_settings_help">כדי להפסיק להשתמש ב־CleanYourTV כמסך הבית, יש לבחור במסך הבית המקורי. כדי לחזור, יש לבחור ב־CleanYourTV. אפליקציית מסך הבית המקורית חייבת להיות פעילה, והטלוויזיה צריכה לתמוך בבחירת מסך בית. אם האפליקציה הושבתה, יש להפעיל תחילה את סקריפט השחזור.</string>
     <string name="launcher_settings">הגדרות מסך הבית</string>
     <string name="native_settings">הגדרות היצרן</string>
@@ -122,6 +124,18 @@
     <string name="wallpaper_none">ללא</string>
     <string name="wallpaper_applied">הטפט שונה</string>
     <string name="wallpaper_theme_default">ברירת המחדל של ערכת הנושא</string>
+    <string name="wallpaper_interval_label">תדירות החלפה</string>
+    <string name="wallpaper_interval_1h">שעה</string>
+    <string name="wallpaper_interval_1d">יום</string>
+    <string name="wallpaper_interval_theme">לפי ערכת הנושא</string>
+    <string name="wallpaper_360">טפטים 360 (חי)</string>
+    <string name="wallpaper_360_state">טפטים 360: %1$s</string>
+    <string name="wallpaper_refresh">רענון הטפט</string>
+    <string name="wallpaper_refreshing">מרענן את הטפט…</string>
+    <string name="film_sources">מקורות לסרטים</string>
+    <string name="film_hub">סרטים וטלוויזיה</string>
+    <string name="film_app_missing">אפליקציית הסרטים אינה מותקנת</string>
+    <string name="wallpaper_interval_needs_pictures">אין עדיין תמונות להחלפה: הפעילו טפטים 360 או ערכת נושא עם תיקיית wallpapers/.</string>
 
     <!-- Race-weekend panel (RaceWeekend). -->
     <string name="race_kicker">סבב %1$d · %2$s · %3$s</string>
@@ -152,4 +166,28 @@
     <string name="clock_format_system">מערכת</string>
     <string name="clock_format_12">12 שעות</string>
     <string name="clock_format_24">24 שעות</string>
+    <string name="film_sources_hint">הקשה מחליפה את המקור של אפליקציית הסרטים · חזרה סוגרת</string>
+    <string name="film_sources_scan_title">סריקה להגדרה</string>
+    <string name="film_sources_scan_hint">אותה רשת Wi-Fi כמו הטלוויזיה: החלפת מקור, כתובת מותאמת, העלאת py</string>
+    <string name="film_sources_py_title">קובצי py שהועלו</string>
+    <string name="film_sources_py_item">%1$s\n%2$s</string>
+    <string name="show_ip_state">הצג כתובת IP: %1$s</string>
+    <string name="columns_auto">אוטומטי</string>
+    <!-- Wallpaper favourites: the Home star button and Launcher settings share these strings.
+         English wording until a Hebrew translation lands; Android falls back to the default anyway. -->
+    <string name="wallpaper_favorite_add">Favourite this wallpaper</string>
+    <string name="wallpaper_favorite_remove">Remove this wallpaper from favourites</string>
+    <string name="wallpaper_favorites_state">Wallpaper favourites: %1$d</string>
+    <string name="wallpaper_favorites_title">Wallpaper favourites</string>
+    <string name="wallpaper_favorites_empty">No favourites yet. While a picture is on screen, press the star button in the top bar (or choose Favourite this wallpaper in Launcher settings).</string>
+    <string name="wallpaper_favorite_none">No still wallpaper is on screen to favourite</string>
+    <string name="wallpaper_favorite_added">Saved to favourites</string>
+    <string name="wallpaper_favorite_removed">Removed from favourites</string>
+    <string name="wallpaper_favorite_applied">Favourite wallpaper enabled</string>
+    <string name="wallpaper_favorite_deleted">Favourite removed</string>
+    <string name="wallpaper_favorites_use">Use this picture</string>
+    <string name="wallpaper_favorites_delete">Remove this favourite</string>
+    <string name="wallpaper_favorites_only_on">Favourites only: on</string>
+    <string name="wallpaper_favorites_only_off">Favourites only: off</string>
+    <string name="wallpaper_favorites_hint">Pick one to hold it on screen · long-press one to remove · Back closes</string>
 </resources>

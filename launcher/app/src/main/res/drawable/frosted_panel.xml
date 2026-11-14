@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark frosted panel for the home weather / clock block: a deep translucent charcoal with a thin
+     light rim. Dark instead of the old white glass so white text stays readable over bright 360
+     wallpapers, while the picture still shows faintly through. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#E60A0E13"
+                android:centerColor="#DA0A0E13"
+                android:endColor="#C80A0E13" />
+            <stroke android:width="1.5dp" android:color="#4DFFFFFF" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+</layer-list>

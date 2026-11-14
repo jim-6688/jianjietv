@@ -5,6 +5,10 @@ launcher/.gradle/
 launcher/build/
 launcher/app/build/
 launcher/local.properties
+mobile/.gradle/
+mobile/build/
+mobile/app/build/
+mobile/local.properties
 # your own TV's dumps (serial, android_id, device names) stay local
 backup/
 # session screenshots and working notes (may show the Wi-Fi name or account avatar) stay local
@@ -21,3 +25,6 @@ bench-results/
 *.aab
 launcher/hs_err_pid*.log
 launcher/replay_pid*.log
+
+# WorkBuddy session data: notes and real-TV screenshots may carry device IPs / identifiers.
+.workbuddy/

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Top-bar "Films" pill: a screen outline with a play triangle. Same 22dp/24 viewport as the other pill icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="22dp" android:height="22dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M4,5h16v2H4zM4,17h16v2H4zM4,7v10h2V7zM18,7v10h2V7zM10,8.6v6.8l5.6,-3.4z" />
+</vector>

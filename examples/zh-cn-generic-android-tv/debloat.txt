@@ -1,0 +1,52 @@
+# 国产 Android TV / 国产盒子 通用安全去广告基线 (zh-cn-generic-android-tv)
+#
+# 适用范围: 运行 Android / Google TV 的国产电视与盒子 (小米/Redmi、TCL、海信/VIDDA、创维/酷开、
+# 长虹、康佳、当贝、微鲸、以及运营商 Android 机顶盒等)。本文件只包含"被 400+ 份贡献者实测清单
+# 高频、安全禁用"的 Google / AOSP 通用包, 不针对任何单一品牌, 因此对所有 Android TV 都低风险。
+#
+# 工作原理: 使用 `pm disable-user` 停用 (不是卸载), 不需要 root, 可随时用 tools/restore.sh 还原。
+# 安全闸: CORE_RE 保护核心系统包、Home 防护避免禁用后无桌面; 本清单不含任何核心包或桌面 HOME。
+#
+# 用法:
+#   停用: TV_HOST=<电视IP> tools/disable.sh examples/zh-cn-generic-android-tv/debloat.txt
+#   守护: TV_HOST=<电视IP> tools/guard.py  examples/zh-cn-generic-android-tv/debloat.txt
+#   还原: TV_HOST=<电视IP> tools/restore.sh examples/zh-cn-generic-android-tv/debloat.txt
+#
+# 注意: 本基线不含品牌自有广告/推送包 (各品牌差异大且需真机确认)。请先用
+#   TV_HOST=<IP> tools/tv.py "pm list packages"
+# 枚举真机包名, 再为本品牌追加专属清单 (参考 examples/ 下同品牌设备文件, 或 docs/devices/zh-cn-domestic-android-tv.md)。
+#
+# 重要: 华为智慧屏 / 荣耀智慧屏运行 HarmonyOS, 不是 Android TV, 本工具与 pm disable-user 不适用,
+# 详见 docs/devices/zh-cn-domestic-android-tv.md。
+
+# --- 遥测与诊断 (Google) ---
+com.google.android.feedback
+com.android.tv.feedbackconsent
+com.google.android.tv.bugreportsender
+com.google.android.onetimeinitializer
+com.android.federatedcompute.services
+com.android.ondevicepersonalization.services
+com.android.adservices.api                  # Privacy Sandbox (广告度量)
+
+# --- 推荐行 / 推广 (广告) ---
+com.google.android.tvrecommendations        # 主屏推荐内容行
+com.google.android.leanbacklauncher.recommendations
+com.google.android.partnersetup             # 合作伙伴推广
+com.google.android.backdrop                 # Chromecast 壁纸屏保
+com.google.android.apps.tv.dreamx           # 屏保 (若改用 CleanYourTV 屏保可禁用)
+
+# --- 可选 / 很少用的 Google 应用 ---
+com.google.android.play.games
+com.google.android.videos                   # Google TV / Play 影视
+com.google.android.youtube.tvmusic
+com.google.android.apps.mediashell
+android.autoinstalls.config.google.gtvpai
+com.android.printspooler
+com.google.android.syncadapters.calendar    # 日历同步 (可选)
+com.android.providers.calendar              # 日历提供器 (CORE_OK 允许)
+
+# --- 按需启用 (确认不用再取消注释) ---
+# com.google.android.tts                   # 语音合成引擎; 不用语音搜索再禁
+# com.google.android.marvin.talkback        # 屏幕阅读器; 未使用再禁
+# com.android.healthconnect.controller
+# com.android.health.connect.backuprestore

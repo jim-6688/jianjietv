@@ -1,0 +1,28 @@
+{
+  "images": [
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Mojave%20Day.jpg", "title": "Mojave Day" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Mojave%20Night.jpg", "title": "Mojave Night" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Yosemite%202.jpg", "title": "Yosemite 2" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Mountain%20Range.jpg", "title": "Mountain Range" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Milky%20Way.jpg", "title": "Milky Way" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Earth%20Horizon.jpg", "title": "Earth Horizon" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Earth%20and%20Moon.jpg", "title": "Earth and Moon" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Ink%20Cloud.jpg", "title": "Ink Cloud" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Foggy%20Forest.jpg", "title": "Foggy Forest" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Lake.jpg", "title": "Lake" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Desert.jpg", "title": "Desert" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Desert%202.jpg", "title": "Desert 2" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Desert%204.jpg", "title": "Desert 4" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Bahamas%20Aerial.jpg", "title": "Bahamas Aerial" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Blue%20Pond.jpg", "title": "Blue Pond" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Floating%20Ice.jpg", "title": "Floating Ice" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Foxtail%20Barley.jpg", "title": "Foxtail Barley" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Lion.jpg", "title": "Lion" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Color%20Burst%201.jpg", "title": "Color Burst 1" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Color%20Burst%202.jpg", "title": "Color Burst 2" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Color%20Burst%203.jpg", "title": "Color Burst 3" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Abstract%201.jpg", "title": "Abstract 1" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Abstract%202.jpg", "title": "Abstract 2" },
+    { "url": "https://raw.githubusercontent.com/foxt/macOS-Wallpapers/master/Abstract%20Shapes.jpg", "title": "Abstract Shapes" }
+  ]
+}

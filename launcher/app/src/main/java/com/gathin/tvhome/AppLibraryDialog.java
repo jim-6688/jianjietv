@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -53,6 +55,8 @@ final class AppLibraryDialog {
      * resources, and on a TCL G09 that froze Home for 60-140 ms (2 to 4 janky frames) every time the library opened.
      */
     private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
+    /** 全部应用的上限：系统应用全量枚举时的保险丝，正常电视远到不了这个数。 */
+    private static final int MAX_CATALOG = 400;
     /** Labels kept between openings (LOADER thread only), until the app is updated. */
     private static final Map<String, Known> KNOWN = new HashMap<>();
 
@@ -237,6 +241,21 @@ final class AppLibraryDialog {
                     if (!pkg.equals(self) && !LibraryApps.excludedFromCatalog(excludedApps, pkg) && !unique.containsKey(pkg)) unique.put(pkg, info);
                 }
             }
+            // 全部应用：系统应用常常不声明 MAIN/LEANBACK 入口，上面两个查询看不到它们（设置页、系统更新、
+            // 投屏之类）。清单里的 QUERY_ALL_PACKAGES 让这里能枚举到每一条已安装记录，有启动入口的照常列成
+            // 一张卡片，没有入口的也列出来，按 OK 打开它的应用信息页。
+            for (PackageInfo installed : installedActivities(pm)) {
+                if (unique.size() > MAX_CATALOG) break;
+                ApplicationInfo app = installed.applicationInfo;
+                String pkg = installed.packageName;
+                if (app == null || !app.enabled || pkg == null || pkg.equals(self)) continue;
+                if (unique.containsKey(pkg) || LibraryApps.excludedFromCatalog(excludedApps, pkg)) continue;
+                if (installed.activities == null || installed.activities.length == 0) continue;
+                ResolveInfo extra = new ResolveInfo();
+                extra.resolvePackageName = pkg;
+                extra.activityInfo = launchEntry(pm, pkg, app);
+                unique.put(pkg, extra);
+            }
             Map<String, String> names = new HashMap<>();
             Map<String, Long> installed = new HashMap<>();
             for (Map.Entry<String, ResolveInfo> entry : unique.entrySet()) {
@@ -269,6 +288,42 @@ final class AppLibraryDialog {
                 if (loads.takeReveal()) reveal();
             });
         });
+    }
+
+    /** 已安装应用的记录（含 activity 列表）；拿不到（包可见性被限制）时返回空表。 */
+    @SuppressWarnings("deprecation")
+    private static List<PackageInfo> installedActivities(PackageManager pm) {
+        try {
+            List<PackageInfo> all = pm.getInstalledPackages(PackageManager.GET_ACTIVITIES);
+            return all == null ? new ArrayList<>() : all;
+        } catch (RuntimeException unavailable) {
+            return new ArrayList<>();
+        }
+    }
+
+    /** 这个包的启动入口；没有（只有内部 activity 的系统应用）时给一个 name 为空的占位，open() 改开应用信息页。 */
+    private static ActivityInfo launchEntry(PackageManager pm, String pkg, ApplicationInfo app) {
+        Intent launch = pm.getLeanbackLaunchIntentForPackage(pkg);
+        if (launch == null) launch = pm.getLaunchIntentForPackage(pkg);
+        ComponentName component = launch == null ? null : launch.getComponent();
+        if (component != null) {
+            try {
+                return pm.getActivityInfo(component, 0);
+            } catch (PackageManager.NameNotFoundException | RuntimeException missing) {
+                // 入口被移除或不可见：按没有入口处理
+            }
+        }
+        ActivityInfo none = new ActivityInfo();
+        none.packageName = pkg;
+        none.applicationInfo = app;
+        none.name = "";
+        return none;
+    }
+
+    /** 有启动入口的卡片；没有入口的（系统设置页、更新服务之类）按 OK 只能看应用信息。 */
+    private static boolean launchable(ResolveInfo app) {
+        String name = app.activityInfo == null ? null : app.activityInfo.name;
+        return name != null && !name.isEmpty();
     }
 
     private void fill(List<ResolveInfo> catalogue) {
@@ -406,7 +461,8 @@ final class AppLibraryDialog {
         highlight.setAlpha(0f);
         highlight.setFocusable(false);
         highlight.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        shelf.addView(highlight, new FrameLayout.LayoutParams(dp(144), dp(180)));
+        // Matches the big catalogue card plus the 6dp rim on each side.
+        shelf.addView(highlight, new FrameLayout.LayoutParams(dp(260), dp(164)));
         scrollOffset = 0;
         spring = new SpringAnimation(highlight, new FloatPropertyCompat<View>("libraryScrollX") {
             @Override public float getValue(View view) { return view.getTranslationX() + scrollOffset; }
@@ -506,6 +562,10 @@ final class AppLibraryDialog {
     }
 
     private void open(ResolveInfo app) {
+        if (!launchable(app)) {
+            openAppInfo(app);
+            return;
+        }
         close();
         Intent intent = new Intent(Intent.ACTION_MAIN).setComponent(
                 new ComponentName(app.activityInfo.packageName, app.activityInfo.name));
@@ -514,6 +574,21 @@ final class AppLibraryDialog {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         try { activity.startActivity(intent); }
         catch (ActivityNotFoundException | SecurityException e) {
+            Toast.makeText(activity, activity.getString(R.string.cant_open, label(app)), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** 没有启动入口的系统应用：打开它的「应用信息」页，至少能看到、能停用或卸载它。 */
+    private void openAppInfo(ResolveInfo app) {
+        Intent info = SystemSettings.appInfo(activity, app.activityInfo.packageName);
+        close();
+        if (info == null) {
+            Toast.makeText(activity, activity.getString(R.string.cant_open, label(app)), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            activity.startActivity(info);
+        } catch (ActivityNotFoundException | SecurityException e) {
             Toast.makeText(activity, activity.getString(R.string.cant_open, label(app)), Toast.LENGTH_SHORT).show();
         }
     }
@@ -536,9 +611,13 @@ final class AppLibraryDialog {
             restoreCardFocus();
         });
         addAction(rows, R.string.library_open, () -> open(app));
-        boolean home = onHome.test(pkg);
-        addAction(rows, home ? R.string.library_remove_shortcut : R.string.library_add_home,
-                () -> changeHome(app, !home));
+        // 没有启动入口的卡片不会出现在 Home 上，所以不给「添加到主页/从主页移除」这一行。
+        boolean entry = launchable(app);
+        boolean home = entry && onHome.test(pkg);
+        if (entry) {
+            addAction(rows, home ? R.string.library_remove_shortcut : R.string.library_add_home,
+                    () -> changeHome(app, !home));
+        }
         Intent info = SystemSettings.appInfo(activity, pkg);
         if (info != null) addAction(rows, R.string.library_app_info, () -> {
             close();
@@ -609,33 +688,40 @@ final class AppLibraryDialog {
 
     private final class Catalog extends RecyclerView.Adapter<Row> {
         @NonNull @Override public Row onCreateViewHolder(@NonNull ViewGroup parent, int type) {
+            // Big card, the same shape as Home's app cards: a large app icon is the card's subject,
+            // with just the name and status beside it. Like Home, the icon takes ~1/2 of the card
+            // height: big enough to recognise, small enough that a low-resolution TV icon stays sharp.
             FrameLayout row = new FrameLayout(activity);
-            RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(dp(132), dp(170));
-            params.setMargins(dp(6), dp(2), dp(6), dp(2));
+            RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(dp(248), dp(152));
+            params.setMargins(dp(8), dp(2), dp(8), dp(2));
             row.setLayoutParams(params);
-            row.setPadding(dp(10), dp(12), dp(10), dp(10));
+            row.setPadding(dp(16), dp(12), dp(12), dp(12));
             row.setFocusableInTouchMode(true);
             row.setClickable(true);
             LinearLayout content = new LinearLayout(activity);
-            content.setOrientation(LinearLayout.VERTICAL);
-            content.setGravity(Gravity.CENTER_HORIZONTAL);
+            content.setOrientation(LinearLayout.HORIZONTAL);
+            content.setGravity(Gravity.CENTER_VERTICAL);
             row.addView(content, new FrameLayout.LayoutParams(-1, -1));
             ImageView icon = new ImageView(activity);
             icon.setId(R.id.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            content.addView(icon, new LinearLayout.LayoutParams(dp(60), dp(60)));
-            TextView name = text("", 15, Color.WHITE);
+            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(76), dp(76));
+            iconParams.setMarginEnd(dp(14));
+            content.addView(icon, iconParams);
+            LinearLayout words = new LinearLayout(activity);
+            words.setOrientation(LinearLayout.VERTICAL);
+            words.setGravity(Gravity.CENTER_VERTICAL);
+            content.addView(words, new LinearLayout.LayoutParams(0, -1, 1f));
+            TextView name = text("", 18, Color.WHITE);
             name.setId(R.id.title);
-            name.setGravity(Gravity.CENTER);
             name.setMaxLines(2);
-            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, dp(44));
-            nameParams.topMargin = dp(10);
-            content.addView(name, nameParams);
-            TextView status = text("", 11, 0xBBFFFFFF);
+            words.addView(name, new LinearLayout.LayoutParams(-1, -2));
+            TextView status = text("", 12, 0xBBFFFFFF);
             status.setId(R.id.status);
-            status.setGravity(Gravity.CENTER);
             status.setMaxLines(2);
-            content.addView(status, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-1, -2);
+            statusParams.topMargin = dp(8);
+            words.addView(status, statusParams);
             View check = new View(activity);
             check.setId(R.id.dot);
             FrameLayout.LayoutParams badge = new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.TOP | Gravity.END);
@@ -651,11 +737,13 @@ final class AppLibraryDialog {
             name.setText(label(app));
             name.setEllipsize(TextUtils.TruncateAt.END);
             TextView status = holder.itemView.findViewById(R.id.status);
+            boolean entry = launchable(app);
             boolean home = onHome.test(pkg);
             boolean recent = !selectionMode && LibraryApps.recent(installTimes.getOrDefault(pkg, 0L), catalogTime);
-            status.setText(home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
-            status.setVisibility(home || !okOpens ? View.VISIBLE : View.INVISIBLE);
-            holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 18));
+            status.setText(!entry ? R.string.library_app_info
+                    : home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
+            status.setVisibility(!entry || home || !okOpens ? View.VISIBLE : View.INVISIBLE);
+            holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 24));
             View check = holder.itemView.findViewById(R.id.dot);
             check.getLayoutParams().width = dp(home ? 18 : 8);
             check.getLayoutParams().height = dp(home ? 18 : 8);
@@ -663,6 +751,11 @@ final class AppLibraryDialog {
             else check.setBackground(surface(0xFF70D9A0, 8));
             check.setVisibility(home || recent ? View.VISIBLE : View.GONE);
             holder.itemView.setOnClickListener(v -> {
+                // 没有启动入口的系统应用：OK 打开应用信息页，不参与「加到主页」。
+                if (!entry) {
+                    open(app);
+                    return;
+                }
                 boolean onHomeNow = onHome.test(pkg);
                 if (LibraryApps.okOpens(selectionMode, okOpens, onHomeNow)) open(app);
                 else changeHome(app, !onHomeNow);

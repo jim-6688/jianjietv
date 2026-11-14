@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 影视墙顶栏分类条上的一个分类标签（折叠到顶栏的那一排）。 -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tab"
+    android:layout_width="wrap_content"
+    android:layout_height="52dp"
+    android:minWidth="82dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:gravity="center"
+    android:background="@drawable/pill_bg"
+    android:textColor="@drawable/pill_text"
+    android:textSize="19sp"
+    android:fontFamily="@string/font_medium"
+    android:letterSpacing="0.02"
+    android:focusable="true"
+    android:clickable="true" />

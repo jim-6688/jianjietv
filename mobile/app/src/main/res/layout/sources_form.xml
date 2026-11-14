@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/StatusCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            style="@style/RowTitle"
+            android:text="添加自定义源" />
+
+        <TextView
+            style="@style/RowSubtitle"
+            android:layout_marginTop="2dp"
+            android:text="填配置地址（http:// 或 https:// 开头），电视会立刻切到这个源。" />
+
+        <EditText
+            android:id="@+id/srcName"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input"
+            android:hint="名称（可不填，默认用域名）"
+            android:inputType="text"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp" />
+
+        <EditText
+            android:id="@+id/srcUrl"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_input"
+            android:hint="配置地址，例如 http://192.168.1.9:8890/"
+            android:inputType="textUri"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/srcApply"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_remote_key"
+            android:text="应用，并让电视切到这个源"
+            android:textColor="@color/brand"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="14dp"
+            android:background="@color/outline" />
+
+        <TextView
+            style="@style/RowTitle"
+            android:text="上传 py 源" />
+
+        <TextView
+            style="@style/RowSubtitle"
+            android:layout_marginTop="2dp"
+            android:text="上传后自动置顶为最高优先级，电视立刻切到这个 py 源。" />
+
+        <Button
+            android:id="@+id/srcPick"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input"
+            android:text="选择 .py 文件并上传"
+            android:textColor="@color/brand"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/srcPickHint"
+            style="@style/RowSubtitle"
+            android:layout_marginTop="8dp"
+            android:text="未选择文件" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Home</string>
+    <string name="app_name">领先桌面</string>
     <string name="inputs">Inputs</string>
     <string name="wifi">Wi-Fi</string>
     <string name="settings">Settings</string>
@@ -47,7 +47,10 @@
     <string name="vpn">VPN</string>
     <string name="vpn_off">VPN off</string>
     <string name="home_settings">Choose default home</string>
-    <string name="home_settings_help">Select your original home to stop using CleanYourTV as Home, or CleanYourTV to switch back. The original launcher must be enabled and your TV must provide a home picker; use the restore script first if it was disabled.</string>
+    <!-- 首页网格最后一张卡片：切回电视原来的桌面。 -->
+    <string name="stock_home">Original home</string>
+    <string name="stock_home_gone">The original home is disabled or was removed</string>
+    <string name="home_settings_help">Select your original home to stop using 领先桌面 as Home, or 领先桌面 to switch back. The original launcher must be enabled and your TV must provide a home picker; use the restore script first if it was disabled.</string>
     <string name="launcher_settings">Launcher settings</string>
     <string name="native_settings">Native settings</string>
     <string name="columns_label">Apps per row</string>
@@ -58,6 +61,38 @@
     <string name="wallpaper_none">None</string>
     <string name="wallpaper_applied">Wallpaper changed</string>
     <string name="wallpaper_theme_default">Theme default</string>
+    <string name="wallpaper_interval_label">Rotation interval</string>
+    <string name="wallpaper_interval_1h">1 hour</string>
+    <string name="wallpaper_interval_1d">1 day</string>
+    <string name="wallpaper_interval_theme">Theme</string>
+    <string name="wallpaper_interval_needs_pictures">Nothing to rotate yet: turn on 360 wallpapers, or use a theme with a wallpapers/ folder.</string>
+    <string name="wallpaper_360">360 wallpapers (live)</string>
+    <string name="wallpaper_360_state">360 wallpapers: %1$s</string>
+    <string name="film_sources">Film sources</string>
+    <string name="film_hub">Films</string>
+    <string name="film_app_missing">Film app is not installed</string>
+    <string name="film_sources_hint">Tap one to switch the film app\'s source · Back closes</string>
+    <string name="film_sources_scan_title">Scan to configure</string>
+    <string name="film_sources_scan_hint">Same Wi-Fi as the TV: switch sources, add a custom URL, upload a .py</string>
+    <string name="film_sources_py_title">Uploaded .py files</string>
+    <string name="film_sources_py_item">%1$s\n%2$s</string>
+    <string name="wallpaper_refresh">Refresh wallpaper</string>
+    <string name="wallpaper_refreshing">Refreshing wallpaper…</string>
+    <string name="wallpaper_favorite_add">Favourite this wallpaper</string>
+    <string name="wallpaper_favorite_remove">Remove this wallpaper from favourites</string>
+    <string name="wallpaper_favorites_state">Wallpaper favourites: %1$d</string>
+    <string name="wallpaper_favorites_title">Wallpaper favourites</string>
+    <string name="wallpaper_favorites_empty">No favourites yet. While a picture is on screen, press the star button in the top bar (or choose Favourite this wallpaper in Launcher settings).</string>
+    <string name="wallpaper_favorite_none">No still wallpaper is on screen to favourite</string>
+    <string name="wallpaper_favorite_added">Saved to favourites</string>
+    <string name="wallpaper_favorite_removed">Removed from favourites</string>
+    <string name="wallpaper_favorite_applied">Favourite wallpaper enabled</string>
+    <string name="wallpaper_favorite_deleted">Favourite removed</string>
+    <string name="wallpaper_favorites_use">Use this picture</string>
+    <string name="wallpaper_favorites_delete">Remove this favourite</string>
+    <string name="wallpaper_favorites_only_on">Favourites only: on</string>
+    <string name="wallpaper_favorites_only_off">Favourites only: off</string>
+    <string name="wallpaper_favorites_hint">Pick one to hold it on screen · long-press one to remove · Back closes</string>
     <string name="animations_state">Animations: %1$s</string>
     <string name="advanced_effects">Advanced effects</string>
     <string name="advanced_effects_state">Advanced effects: %1$s</string>
@@ -158,4 +193,8 @@
     <string name="clock_format_system">System</string>
     <string name="clock_format_12">12-hour</string>
     <string name="clock_format_24">24-hour</string>
+    <!-- Top bar network line: off shows the broadband ISP name, on shows the LAN/WAN IP lines. -->
+    <string name="show_ip_state">Show IP: %1$s</string>
+    <!-- Settings: let the app count choose the number of columns. -->
+    <string name="columns_auto">Auto</string>
 </resources>

@@ -12,7 +12,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Outline;
-import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -61,12 +60,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         /** Hold OK on a tile: the activity shows the tile menu (move, remove from Home, app info). */
         void onTileLongPress(int position, View card);
         void onLibraryUp();
+        /** Down on the App library pill: the last thing below the grid, so the launcher opens 影视 there. */
+        void onLibraryDown();
         /** A tile whose launch_actions entry is "input:<id>": switch to that TV input instead of opening an app. */
         void onOpenInput(String inputId);
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, EMPTY = 3;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, EMPTY = 3, STOCK_HOME = 4;
 
         final int kind;
         final String label;
@@ -98,12 +99,19 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     static final float FOCUS_SCALE = 1.10f;
-    /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
-    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 101f;
+    /**
+     * Design ratio of a tile (16:9, the same shape as a TV banner). A 16:9 banner with fitCenter now
+     * fills the card exactly: no black bars above and below, no cropping and no stretching. Big cards:
+     * 3 columns on a 1080p TV give about 246 x 138dp, still roughly twice the area of the old
+     * 180 x 101dp strips. The width is decided by tileWidthPx, not by these numbers alone; they keep
+     * the aspect ratio and give the focus zoom a reference size.
+     */
+    static final float DESIGN_W_DP = 320f, DESIGN_H_DP = 180f;
 
     /**
      * Tile width for a grid of this inner width: the cell minus room for the focus zoom and the glass
-     * highlight, capped at the design size so 4 columns on a 1080p TV look exactly as before.
+     * highlight, capped at the design size. With 3 columns a 1080p TV has ~282dp per cell, so the fit
+     * rule (not the 320dp cap) sets the real card width.
      */
     static int tileWidthPx(int innerWidthPx, int columns, float density) {
         int design = Math.round(DESIGN_W_DP * density);
@@ -128,15 +136,15 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     /**
-     * dock_row false: 4dp padding above and below, a 4dp gap and a 20dp name label, and 16dp kept under the last
-     * row. The plain grid fits more rows on the screen, and with item_app.xml's roomier spacing the tiles came
-     * out small with wide gaps between them.
+     * dock_row false: 4dp padding above and below, a 4dp gap and the 18dp name line under the card,
+     * and 16dp under the last row. The line is the app's name on banner/uniform cards: the card itself
+     * stays artwork only, so it must not be hidden just because the card grew.
      */
-    static final float COMPACT_ITEM_EXTRA_DP = 4 + 4 + 4 + 20;
+    static final float COMPACT_ITEM_EXTRA_DP = 4 + 4 + 4 + 18;
     static final float COMPACT_BOTTOM_ROOM_DP = 16;
 
-    /** item_app.xml: 8dp padding above and below, a 7dp gap and the 22dp name label under the tile. */
-    static final float ITEM_EXTRA_DP = 45;
+    /** item_app.xml: 4dp padding above and below, a 4dp gap and the 18dp name line under the tile. */
+    static final float ITEM_EXTRA_DP = 30;
     /** DockDecoration's offsets above and below the dock row. */
     static final float DOCK_EXTRA_DP = 6 + 12;
     /** Room kept under the last row rows_below_dock asks for (MainActivity places the dock with the same). */
@@ -188,6 +196,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean singleRow;
     /** config always_show_names: the alpha of an unfocused tile's name (0 hides it). */
     private final float restNameAlpha;
+    /** config always_show_names: names show under the tile even when not focused (we scope this to the dock row). */
+    private final boolean alwaysShowNames;
     /** cinematic_home: only then does a launch record the last-opened app the shelf uses. */
     private final boolean cinematic;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
@@ -241,6 +251,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.dockRow = cfg.dockRow;
         this.singleRow = cfg.singleRow;
         this.restNameAlpha = cfg.alwaysShowNames ? 0.75f : 0f;
+        this.alwaysShowNames = cfg.alwaysShowNames;
         this.cinematic = cfg.cinematicHome;
         this.launchActions = cfg.launchActions;
         this.iconTiles = new HashSet<>(Arrays.asList(ctx.getResources().getStringArray(R.array.icon_tiles)));
@@ -333,6 +344,12 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     new ComponentName(ctx, HomeSettingsActivity.class), null,
                     ctx.getDrawable(R.drawable.ic_home_settings), null, 0));
         }
+        // 回到原桌面：电视自带的 launcher 还启用着才给这张卡片，否则点了也只会失败（StockHome 注释）。
+        if (StockHome.installed(ctx)) {
+            fresh.add(new Entry(Entry.STOCK_HOME, ctx.getString(R.string.stock_home),
+                    new ComponentName(ctx, "stock-home"), null,
+                    ctx.getDrawable(R.drawable.ic_stock_home), null, 0));
+        }
         docked = 0;
         while (docked < fresh.size() && isDocked(fresh.get(docked))) docked++;
         emptySlots = dockRow && !reordering ? DockSlots.empty(docked, dockSize, fresh.size(), fillDock) : 0;
@@ -406,6 +423,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             button.setOnKeyListener((v, key, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
                 if (key == KeyEvent.KEYCODE_DPAD_UP) listener.onLibraryUp();
+                if (key == KeyEvent.KEYCODE_DPAD_DOWN) listener.onLibraryDown();
                 return key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN
                         || key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT;
             });
@@ -424,34 +442,23 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         View name = v.findViewById(R.id.name);
         ViewGroup.MarginLayoutParams nameLp = (ViewGroup.MarginLayoutParams) name.getLayoutParams();
         nameLp.width = w;
-        nameLp.topMargin = h + Math.round((dockRow ? 7 : 4) * density);
-        if (!dockRow) {
-            // Compact spacing (COMPACT_ITEM_EXTRA_DP): 4dp item padding and a 20dp name instead of 8dp and 22dp.
-            nameLp.height = Math.round(20 * density);
-            int pad = Math.round(4 * density);
-            v.setPadding(v.getPaddingLeft(), pad, v.getPaddingRight(), pad);
-        }
+        // The card is the app's artwork (banner or big icon); the line under it prints the app's name
+        // when focused, or always with always_show_names. It needs its full 18dp on every row.
+        nameLp.topMargin = h + Math.round(4 * density);
+        nameLp.height = Math.round(18 * density);
+        int pad = Math.round(4 * density);
+        v.setPadding(v.getPaddingLeft(), pad, v.getPaddingRight(), pad);
         name.setLayoutParams(nameLp);
         // A sideways row would stretch a match_parent item across the whole screen: give it a grid column's width.
         if (singleRow) v.getLayoutParams().width = inner / dockSize;
-        if (uniformTiles) {
-            // tvOS-style tile: a large centred mark, no caption inside the card.
-            View icon = v.findViewById(R.id.icon);
-            FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) icon.getLayoutParams();
-            iconLp.width = iconLp.height = Math.round(h * ICON_SHARE);
-            iconLp.bottomMargin = 0;
-            icon.setLayoutParams(iconLp);
-        } else if (h < Math.round(DESIGN_H_DP * density)) {
-            // Shrunk tiles (e.g. 5 or 6 columns): scale icon and bottom margin proportionally with tile height so the label does not overlap the icon.
-            View icon = v.findViewById(R.id.icon);
-            FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) icon.getLayoutParams();
-            float scale = (float) h / (DESIGN_H_DP * density);
-            iconLp.width = iconLp.height = Math.round(48f * density * scale);
-            iconLp.bottomMargin = Math.round(14f * density * scale);
-            icon.setLayoutParams(iconLp);
-            View label = v.findViewById(R.id.label);
-            label.setPadding(label.getPaddingLeft(), label.getPaddingTop(), label.getPaddingRight(), Math.round(4f * density));
-        }
+        // ICON_SHARE keeps the icon a big mark but no longer stretches a low-resolution TV icon across
+        // most of the card (50% of its height here). Icon tiles leave room at the bottom for their
+        // in-card name; fitCenter in item_app.xml keeps the aspect ratio whatever the source drawable.
+        View icon = v.findViewById(R.id.icon);
+        FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) icon.getLayoutParams();
+        iconLp.width = iconLp.height = Math.round(h * ICON_SHARE);
+        iconLp.bottomMargin = uniformTiles ? 0 : Math.round(h * 0.12f);
+        icon.setLayoutParams(iconLp);
         return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusOvershoot);
     }
 
@@ -475,27 +482,33 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.card.setVisibility(View.VISIBLE);
         h.card.setFocusable(true);
         h.name.setText(e.name);
-        // The dock has no labels, unless always_show_names asks for them (DockDecoration then makes room in the band).
-        // In a single row every tile is the dock's kind: the big title above names it.
+        // The card itself is the app's artwork: a banner fills it, or a large icon centred on a tinted
+        // card. Only icon tiles (no banner) print their name inside the card, as they always have; banner
+        // and uniform tiles keep the artwork clean and use the line under the card for the name.
         boolean dockKind = DockSlots.inDockRow(dockRow, singleRow, position, dockSize);
-        h.name.setVisibility(dockKind && restNameAlpha == 0f ? View.INVISIBLE : View.VISIBLE);
+        boolean namedInside = e.banner == null && !uniformTiles;
+        h.name.setVisibility(namedInside ? View.INVISIBLE : View.VISIBLE);
         h.inDock = dockKind;
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
-        h.name.setAlpha(focused ? 1f : restNameAlpha);
+        // Names stay visible on the dock row only; the grid shows them on focus as before (#dock names).
+        float rest = (alwaysShowNames && dockKind) ? 0.75f : 0f;
+        h.restNameAlpha = rest;
+        h.name.setAlpha(focused ? 1f : rest);
         h.card.setScaleX(focused && animations ? focusScale() : 1f);
         h.card.setScaleY(focused && animations ? focusScale() : 1f);
         h.card.setTranslationY(focused && advancedEffects && !dockKind ? -4f * ctx.getResources().getDisplayMetrics().density : 0f);
         h.card.setTranslationZ(focused && advancedEffects ? 8f * ctx.getResources().getDisplayMetrics().density : 0f);
         h.banner.setScaleX(focused && advancedEffects ? 1.035f : 1f);
         h.banner.setScaleY(focused && advancedEffects ? 1.035f : 1f);
-        // A fully opaque banner covers the whole card (centerCrop), so the card's own fill under it is drawn for
-        // nothing on every frame; keep it under banners with transparent parts and under icon tiles.
-        h.card.setBackground(e.banner != null && e.banner.getOpacity() == PixelFormat.OPAQUE ? null : h.cardBackground);
+        // The card is 16:9 now, so fitCenter fills it exactly without black bars or cropping. Keep the
+        // card's own background anyway: icon tiles and banners with transparent parts still need it.
+        h.card.setBackground(h.cardBackground);
         if (uniformTiles && e.banner == null) {
             if (e.backdrop == null) e.backdrop = backdrop(e.icon, ambientColorAt(position));
             h.card.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, e.backdrop));
         }
         if (e.banner != null) {
+            // A TV banner is already the whole card: never cover it with a caption or a scrim.
             h.banner.setImageDrawable(e.banner);
             h.banner.setVisibility(View.VISIBLE);
             h.icon.setVisibility(View.GONE);
@@ -531,6 +544,13 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return;
+        }
+        if (e.kind == Entry.STOCK_HOME) {
+            // 一次性切回原桌面：不把它设回默认桌面，遥控器再按 Home 仍然回到这里。
+            if (!StockHome.open(ctx)) {
+                Toast.makeText(ctx, R.string.stock_home_gone, Toast.LENGTH_SHORT).show();
+            }
             return;
         }
         Intent i = new Intent(Intent.ACTION_MAIN)
@@ -608,10 +628,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return emptySlots > 0;
     }
 
-    /** Tiles that can be moved: everything but the "Default home" tile, which always stays last. */
+    /** Tiles that can be moved: everything but the cards the launcher adds itself, which always stay last. */
     int movableCount() {
         int n = items.size();
-        return n > 0 && items.get(n - 1).kind == Entry.HOME_SETTINGS ? n - 1 : n;
+        while (n > 0 && (items.get(n - 1).kind == Entry.HOME_SETTINGS || items.get(n - 1).kind == Entry.STOCK_HOME)) n--;
+        return n;
     }
 
     /** Keys of the movable tiles in their current order, for Order (empty dock slots are not tiles). */
@@ -689,8 +710,13 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return e.ambient;
     }
 
-    /** Share of the tile height the icon takes in uniform_tiles mode (onCreateViewHolder). */
-    private static final float ICON_SHARE = 0.62f;
+    /**
+     * Share of the tile height the icon takes. The 62% that uniform_tiles used looks distorted on a
+     * 16:9 big card: many TV icons are low-resolution, and blowing them up that far shows their edges.
+     * Half the card height keeps them recognisable and still reads as a big mark, not a badge.
+     * Also used by plateColors() to sample the icon's own rows, so both stay in sync.
+     */
+    private static final float ICON_SHARE = 0.50f;
 
     /**
      * The colour covering most of an icon, for a card that should read as that app: a small saturated badge
@@ -894,9 +920,12 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return Color.HSVToColor(hsv);
     }
 
-    /** Corner radius for a tile of this width: 16dp at the design width, proportionally less when smaller. */
+    /**
+     * Corner radius for a big card: 24dp at the ~240dp a 3-column 1080p TV gives, proportionally less
+     * when more columns shrink the tiles. The same radius is used by tile_bg.xml and by the outline clip.
+     */
     static float cornerRadius(int tileWidthPx, float density) {
-        return 16f * density * Math.min(1f, tileWidthPx / (DESIGN_W_DP * density));
+        return 24f * density * Math.min(1f, tileWidthPx / (240f * density));
     }
 
     static final class Holder extends RecyclerView.ViewHolder {
@@ -910,8 +939,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final boolean animations;
         final boolean advancedEffects;
         final boolean reducedMotion;
-        /** Alpha of the name while the tile is not focused (always_show_names). */
-        final float restNameAlpha;
+        /** Alpha of the name while the tile is not focused (always_show_names), set per bind (dock-only). */
+        float restNameAlpha;
         final boolean overshoot;
         /** A dock tile: it grows in place without advanced_effects' lift, which reads as off-centre in the band (#2135). */
         boolean inDock;
@@ -935,7 +964,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             card.setOutlineProvider(new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
-                    // 16dp at the design width, scaled down with the tile so small tiles keep the same shape.
+                    // 24dp on a full-size big card, scaled down with the tile so small tiles keep the same shape.
                     outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cornerRadius(view.getWidth(), density));
                 }
             });

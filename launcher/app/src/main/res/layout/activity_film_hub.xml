@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 影视墙（首页「向下」菜单）：整屏深色背景；顶部一排分类标签折叠进顶栏色条；
+     下面是「最近观看」横排与「影视墙」海报网格。返回键关闭。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/backdrop"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/film_hub_bg">
+
+    <!-- 影视背景：当前海报的模糊图（代码设置），叠一层暗色蒙版保证文字可读。 -->
+    <ImageView
+        android:id="@+id/hubBg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.6"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null" />
+
+    <View
+        android:id="@+id/hubScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/film_hub_scrim" />
+
+    <LinearLayout
+        android:id="@+id/sheet"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- 顶栏色条：分类标签折叠到这里，延续首页实色顶栏的观感 -->
+        <LinearLayout
+            android:id="@+id/topBand"
+            android:layout_width="match_parent"
+            android:layout_height="132dp"
+            android:background="@drawable/top_bar_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="56dp"
+            android:paddingEnd="56dp">
+
+            <TextView
+                android:id="@+id/hubTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="72dp"
+                android:gravity="center_vertical"
+                android:singleLine="true"
+                android:text="影视"
+                android:textColor="#FFFFFFFF"
+                android:textSize="34sp"
+                android:fontFamily="@string/font_light"
+                android:letterSpacing="0.04"
+                android:includeFontPadding="false" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/tabs"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="24dp"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:scrollbars="none" />
+        </LinearLayout>
+
+        <!-- 主体：最近观看 + 影视墙 -->
+        <LinearLayout
+            android:id="@+id/body"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="56dp"
+            android:paddingEnd="56dp"
+            android:paddingTop="26dp"
+            android:paddingBottom="44dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+
+            <LinearLayout
+                android:id="@+id/recentBlock"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="最近观看"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="22sp"
+                    android:fontFamily="@string/font_medium"
+                    android:letterSpacing="0.04" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recents"
+                    android:layout_width="match_parent"
+                    android:layout_height="190dp"
+                    android:layout_marginTop="14dp"
+                    android:clipToPadding="false"
+                    android:overScrollMode="never"
+                    android:scrollbars="none" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/wallTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="影视墙 · 全部分类"
+                android:textColor="#B3FFFFFF"
+                android:textSize="22sp"
+                android:fontFamily="@string/font_medium"
+                android:letterSpacing="0.04" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/wall"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="14dp"
+                android:clipToPadding="false"
+                android:clipChildren="false"
+                android:overScrollMode="never"
+                android:scrollbars="none" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

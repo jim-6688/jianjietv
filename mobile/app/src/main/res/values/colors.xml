@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<res xmlns:android="http://schemas.android.com/apk/res/android">
+    <color name="white">#FFFFFFFF</color>
+    <color name="brand">#006D5B</color>
+    <color name="brand_dark">#004A3D</color>
+    <color name="brand_container">#DCF1EA</color>
+    <color name="brand_on_container">#003B30</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F1F5F3</color>
+    <color name="background">#F5F8F7</color>
+    <color name="on_surface">#11231D</color>
+    <color name="on_surface_variant">#5C6B65</color>
+    <color name="outline">#D7DEDB</color>
+    <color name="brand_ripple">#20006D5B</color>
+    <color name="danger">#C62828</color>
+    <color name="danger_container">#FBE9E7</color>
+</res>

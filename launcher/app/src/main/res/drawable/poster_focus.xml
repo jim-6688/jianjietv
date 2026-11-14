@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 海报卡聚焦描边：无填充、亮色圆角框，叠在卡片前景（setForeground）。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#00000000" />
+    <corners android:radius="14dp" />
+    <stroke android:width="3dp" android:color="#FFE7B400" />
+</shape>

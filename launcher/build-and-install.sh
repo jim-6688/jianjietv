@@ -3,6 +3,17 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 : "${TV_HOST:?set TV_HOST to the TV IP address, e.g. TV_HOST=192.168.1.50 $0}"
+# China-market firmware (Coocaa / Skyworth): the vendor opens its own home screen at power-on and
+# covers everything with a full-screen "always on display" overlay, so Home ownership alone does not
+# put this launcher on screen. DOMESTIC_TV=1 applies the reversible fixes in
+# docs/devices/skyworth-9ta01-s81p.md. Off by default: it changes accessibility settings and turns
+# the vendor overlay off. One switch brings in the two helpers those fixes need, so a caller does
+# not have to remember HOME_KEY_SERVICE=1 and RESTORE_KEY_SERVICES=1 as well.
+DOMESTIC_TV="${DOMESTIC_TV:-0}"
+if [ "$DOMESTIC_TV" = 1 ]; then
+  HOME_KEY_SERVICE=1
+  RESTORE_KEY_SERVICES=1
+fi
 TOOLS="$(cd ../tools && (pwd -W 2>/dev/null || pwd))"   # absolute (Windows form on Git Bash, for Windows Python), so the venv's Python doesn't warn about "../" in its prefix
 PY=$TOOLS/venv/bin/python
 [ -x "$PY" ] || PY=$TOOLS/venv/Scripts/python.exe
@@ -69,6 +80,14 @@ fi
 # the stock home, and the default applicationId is refused as Home on that firmware.
 # docs/devices/oppo-k9-55-oppocnm632.md.
 KNOWN_STOCK_LAUNCHERS="com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher com.mitv.tvhome"
+# Coocaa's home screen (com.tianci.movieplatform) is started by the firmware rather than by a HOME
+# intent on that set, so it deliberately stays OUT of KNOWN_STOCK_LAUNCHERS: adding it would disable
+# the vendor's TV platform, which the power-on fix never needed. With DOMESTIC_TV=1 take Home by
+# setting the default only and leave every vendor package enabled.
+if [ "$DOMESTIC_TV" = 1 ] && [ -z "${STOCK_LAUNCHER:-}" ]; then
+  STOCK_LAUNCHER=none
+  echo "Domestic TV mode: no stock launcher disabled; Home is taken with set-home-activity."
+fi
 if [ -z "${STOCK_LAUNCHER:-}" ]; then
   HOME_PKG=$("$PY" -I ../tools/tv.py 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME' \
     | tail -n 1 | tr -d '\r' | cut -d/ -f1) || {
@@ -266,4 +285,48 @@ if [ "$ACK_FOUND" != 1 ]; then
   echo "The launcher is installed and is Home. Check by hand: tools/tv.py 'dumpsys package com.gathin.tvhome' | grep $SECURE" >&2
   exit 1
 fi
+
+# DOMESTIC_TV=1: the Coocaa / Skyworth power-on fixes (docs/devices/skyworth-9ta01-s81p.md).
+# Nothing here disables or uninstalls a package, and every step is reversible: the overlay comes
+# back with `cmd appops set com.coocaa.aod SYSTEM_ALERT_WINDOW default; appops write-settings`.
+domestic_tv_setup() {
+  CFG_DIR=/sdcard/Android/data/com.gathin.tvhome/files
+  CFG=$CFG_DIR/config.json
+  # Merge the three keys into a theme's config.json instead of overwriting it. The TV shell has no
+  # JSON tool, so the merge runs here in the venv's Python. Quotes in a theme (greetingName can
+  # contain an apostrophe) are written as \u0027 so the result survives one single-quoted printf.
+  if ! OLD=$("$PY" -I ../tools/tv.py "mkdir -p $CFG_DIR; cat $CFG 2>/dev/null || echo {}"); then
+    echo "ERROR: could not read $CFG from the TV; domestic setup aborted." >&2; exit 1
+  fi
+  NEW=$(printf '%s' "$OLD" | "$PY" -I -c '
+import json, sys
+raw = sys.stdin.read().strip() or "{}"
+try:
+    data = json.loads(raw)
+except ValueError:
+    sys.exit("ERROR: existing config.json is not valid JSON; left untouched")
+data.update({"power_on_home_always": True,
+             "restore_key_services": True,
+             "stock_home_redirect": "com.tianci.movieplatform"})
+print(json.dumps(data, separators=(",", ":")).replace(chr(39), chr(92) + "u0027"))
+') || { echo "ERROR: could not merge $CFG; the launcher is installed and is Home." >&2; exit 1; }
+  "$PY" -I ../tools/tv.py "printf '%s' '$NEW' > $CFG" >/dev/null \
+    || { echo "ERROR: could not write $CFG; the launcher is installed and is Home." >&2; exit 1; }
+  # com.coocaa.aod draws a uid-1000 SYSTEM_ALERT_WINDOW over Home. App-ops are written lazily:
+  # write-settings has to follow the deny, or the next reboot brings the black window back.
+  AOD_PKG=$("$PY" -I ../tools/tv.py 'pm path com.coocaa.aod') || AOD_PKG=""
+  case "$AOD_PKG" in
+    *package:*)
+      AOD=$("$PY" -I ../tools/tv.py 'cmd appops set com.coocaa.aod SYSTEM_ALERT_WINDOW deny 2>/dev/null; appops write-settings 2>/dev/null; cmd appops get com.coocaa.aod 2>/dev/null | grep SYSTEM_ALERT_WINDOW') || AOD=""
+      echo "$AOD"
+      case "$AOD" in
+        *"SYSTEM_ALERT_WINDOW: deny"*) ;;
+        *) echo "ERROR: could not turn off the Coocaa AOD overlay; Home may stay black at power-on." >&2
+           echo "The launcher is installed and is Home. Check: cmd appops get com.coocaa.aod" >&2; exit 1 ;;
+      esac ;;
+    *) echo "No com.coocaa.aod on this TV; the overlay fix was skipped." ;;
+  esac
+  echo "Domestic TV setup done: power-on Home guard on, AOD overlay off."
+}
+if [ "$DOMESTIC_TV" = 1 ]; then domestic_tv_setup; fi
 echo "Installed. Press Home on the remote to see it."

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「回到原桌面」卡片：一间房子，门里一个向左的箭头（回去）。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.7"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4.4,11.1L12,4.4L19.6,11.1V19.6H4.4Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7.2,14.9L10.4,12.4V13.6H16.6V16.2H10.4V17.4Z" />
+</vector>

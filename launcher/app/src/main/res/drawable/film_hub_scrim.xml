@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 影视背景上的暗色蒙版：顶部略透（露出模糊海报），向下逐渐加深，保证文字与卡片可读。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#73000000"
+        android:centerColor="#A60A0E13"
+        android:endColor="#CC0A0E13"
+        android:centerY="0.35" />
+</shape>

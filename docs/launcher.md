@@ -26,7 +26,15 @@ and `sdkmanager "platforms;android-34" "build-tools;34.0.0"`. On Linux the insta
 [`config.xml`](../launcher/app/src/main/res/values/config.xml) sets:
 
 - the dock order, hidden apps and the Live TV package;
-- columns (tiles shrink from 5 up) and rows under the dock;
+- columns (3 wide 16:9 app cards by default; **Auto** picks 3..6 from the app count, and a manual
+  choice in Settings wins) and rows under the dock;
+  a card is the app's artwork: a TV banner fills it, or a large icon (half the card height) sits
+  centred on a tinted card with `fitCenter`, so low-resolution TV icons stay sharp and in proportion.
+  Banners carry no caption or scrim; the name is the line under the card, shown on focus (or always
+  with `always_show_names`). Only icon tiles print their name inside.
+- in the top bar the clock sits at the left edge and the pills at the right, both vertically centred
+  in the bar; the network line shows the broadband ISP name by default and only prints the LAN/WAN
+  IP lines when **Show IP** is on in the settings; the drawer's panel uses the same opacity as the bar;
 - an optional VPN app for the network pill;
 - `reduced_motion`, for TVs whose GPU cannot keep up.
 
@@ -51,7 +59,10 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
 The launcher's own page has these rows, top to bottom:
 
 - **Reorder apps**, only with `launcher_settings_button`, the same as the menu's.
-- **Apps per row** 4, 5, 6 or 7; **Rows below dock** 0 to 3, how many rows of tiles stay visible under the
+- **Show IP** prints the LAN and WAN IP lines in the top bar. Off by default, when the bar shows the
+  broadband ISP name (read from the public-IP echo service) and the connection type instead.
+- **Apps per row** 3, 4, 5 or 6, or **Auto**, which picks the count from the number of installed apps so
+  a small library keeps big cards and a larger one still fits on a screen; **Rows below dock** 0 to 3, how many rows of tiles stay visible under the
   dock band; **Dock band opacity** 100%, 70%, 50% or 30%. The last two only do anything while the dock is
   its own row (`dock_row`, on by default).
 - **Clock**: **System** follows the TV's 12- or 24-hour setting; **12-hour** or **24-hour** sets the launcher's
@@ -59,6 +70,33 @@ The launcher's own page has these rows, top to bottom:
 - **Wallpaper**: one picture from the theme's collection (or its `wallpaper.jpg`), **None**, or **Theme
   default**. A pick holds that picture and stops the rotation until you choose Theme default, press
   Follow theme, or push the theme again.
+- **Rotation interval**: **1 hour**, **1 day**, or **Theme**. Picks how often a rotating collection changes
+  picture, and with **360 wallpapers** on, how often a new batch is fetched (following the theme keeps the
+  old 6-hour throttle). A theme sets the same thing with `wallpaper_rotation_minutes`.
+- **360 wallpapers (live)** on or off, and **Refresh wallpaper**, which changes the picture now and fetches
+  a fresh batch.
+- **★ (top bar)** saves or unsaves the picture currently on screen with one tap. The star turns
+  champagne gold while that picture is saved, and follows the rotation as the picture changes.
+  Long-press it to open **Wallpaper favourites** without going into settings. Video wallpaper has no
+  still to save, but the long-press list can still switch Home back to a saved picture.
+- **Favourite this wallpaper** copies the picture currently on screen into a private favourites folder, so
+  a later wallpaper refresh cannot delete it. The row reads **Remove this wallpaper from favourites**
+  while that picture is saved. Video wallpaper has no still to save.
+- **Wallpaper favourites** opens the saved pictures: pick one to hold it on screen, long-press one to
+  remove it, or turn on **Favourites only** to rotate through the saved pictures alone. Either choice
+  outranks the theme, the Apple stills and 360, and **Follow theme** clears both.
+- **Film sources** opens the source list in the same drawer: pick a source for the film app, or scan the
+  QR code with a phone on the same Wi-Fi to switch it or add a custom URL. A `.py` uploaded from the
+  phone is a config source in its own right: it goes **above every built-in source** (newest upload
+  first) and Home switches to it automatically. The small LAN server stays up for the whole Home
+  process, so that address still works after the drawer is closed.
+- **Films** (top-bar pill) opens the content page, a full-screen wall of real posters from Douban's public
+  subject collections (`movie_showing`, `tv_hot`, `tv_animation`, …), cached per collection. Cards show the
+  Douban title, subtitle/rating and cover. Tapping a card passes the **title**, not the category, to
+  `com.fongmi.android.tv` through `ACTION_SEARCH`; when the film app has no search entry it just launches,
+  and when it is not installed Home says so. Home stores no streams and plays nothing — playback happens
+  inside the film app. Douban's collection API gives no synopsis or watch progress, so neither is shown.
+  Down from the last app row still launches the film app directly: the content page is a separate entry.
 - **Animations** on or off, and **Advanced effects** (tile lift, icon zoom and smooth ambient-colour
   transitions; they may use more memory) once animations are on.
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first

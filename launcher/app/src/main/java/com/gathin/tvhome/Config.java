@@ -42,6 +42,11 @@ final class Config {
     static final String SETTINGS_NAME = "launcher_settings";
     static final String ROWS_BELOW_DOCK_KEY = "rows_below_dock";
     static final String WALLPAPER_CHOICE_KEY = "wallpaper_choice";
+    /**
+     * Launcher settings' rotation interval in minutes (60 or 1440). Unset means the theme decides, exactly
+     * as before this choice existed ( {@code wallpaper_rotation_minutes} in a theme's config.json).
+     */
+    static final String WALLPAPER_INTERVAL_KEY = "wallpaper_interval";
     static final String DOCK_OPACITY_KEY = "dock_opacity";
     static final String CLOCK_FORMAT_KEY = "clock_format";
     /**
@@ -205,11 +210,19 @@ final class Config {
     final int wallpaperDim;
     /** The dock band's opacity in percent (config.json dock_opacity, 30-100): below 100 the wallpaper shows through. */
     final int dockOpacity;
+    /** The dock band's corner radius in dp (dock_radius): bigger is more pill-like. */
+    final int dockRadius;
+    /** The dock band's padding around its tiles in dp (dock_padding): room above, below and at the sides. */
+    final int dockPadding;
     /**
      * Playback order for a wallpaper collection: {@code sequential} or {@code shuffle}. Missing or
      * invalid values keep the historical shuffle so existing themes rotate exactly as before.
      */
     final String wallpaperOrder;
+    /** Apple still-wallpaper source (option 1): on by default, the bundled macOS pictures replace the theme's stills. */
+    final boolean wallpaperStillsEnabled;
+    /** Which still-wallpaper manifest: "apple" (built-in) or a remote {"images":[...]} manifest URL/assets file. */
+    final String wallpaperStillsManifest;
     /** Whether the overlay file was present and parsed. */
     final boolean overlayApplied;
     /** Festive skin from a theme (festival, festival_until, greeting, accent_color); {@link Festival#NONE} if none. */
@@ -253,6 +266,10 @@ final class Config {
     static final String GLASS_DEFAULT = "glass", GLASS_RIM = "rim", GLASS_HALO = "halo";
     /** Show each rotating wallpaper's name from wallpapers/captions.txt (config.xml / theme wallpaper_captions). */
     final boolean wallpaperCaptions;
+    /** Video wallpaper on: stream a looping, muted clip behind Home (Aerial-style) instead of a still picture. */
+    final boolean wallpaperVideoEnabled;
+    /** Video manifest: "aerial" (built-in Apple list) or a remote {"videos":[{"url":...}]} URL. */
+    final String wallpaperVideoManifest;
     /** Answer VIEW_INPUTS with the Inputs menu (handle_view_inputs); see InputsRequestActivity. */
     final boolean handleViewInputs;
     /** Hold OK on a tile opens a menu (Move, Remove from Home, App info) instead of App info (config.xml / theme tile_menu). */
@@ -284,13 +301,15 @@ final class Config {
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean openOnStartChoice, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, boolean showLibraryPill, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
                    boolean showHomeSettingsShortcut, boolean showStats, String gameDay, boolean appLibrary, boolean appLibrarySelection, boolean libraryOkOpens, boolean uniformTiles, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
-                   int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
+                   int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, int dockRadius, int dockPadding, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
                    List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, boolean appGlow, boolean fadeRows, int homeIdleClockMinutes,
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly,
-                   int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap) {
+                   int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
+                   boolean wallpaperVideoEnabled, String wallpaperVideoManifest,
+                   boolean wallpaperStillsEnabled, String wallpaperStillsManifest) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -342,6 +361,8 @@ final class Config {
         this.iconOnlyVpn = iconOnlyVpn;
         this.backOpensClock = backOpensClock;
         this.glowSnap = glowSnap;
+        this.wallpaperVideoEnabled = wallpaperVideoEnabled;
+        this.wallpaperVideoManifest = wallpaperVideoManifest;
         this.libraryButton = libraryButton;
         this.showLibraryPill = showLibraryPill;
         this.wifiLabelWidth = wifiLabelWidth;
@@ -367,7 +388,11 @@ final class Config {
         this.wallpaperRotationMinutes = wallpaperRotationMinutes;
         this.wallpaperDim = wallpaperDim;
         this.dockOpacity = dockOpacity;
+        this.dockRadius = dockRadius;
+        this.dockPadding = dockPadding;
         this.wallpaperOrder = wallpaperOrder;
+        this.wallpaperStillsEnabled = wallpaperStillsEnabled;
+        this.wallpaperStillsManifest = wallpaperStillsManifest;
         this.overlayApplied = overlayApplied;
         this.festival = festival;
         this.raceCalendar = Collections.unmodifiableList(raceCalendar);
@@ -479,6 +504,10 @@ final class Config {
         boolean wallpaperTrueColor = res.getBoolean(R.bool.wallpaper_true_color);
         boolean focusOvershoot = res.getBoolean(R.bool.focus_overshoot);
         boolean wallpaperCaptions = res.getBoolean(R.bool.wallpaper_captions);
+        boolean wallpaperVideoEnabled = res.getBoolean(R.bool.wallpaper_video_enabled);
+        String wallpaperVideoManifest = res.getString(R.string.wallpaper_video_manifest).trim();
+        boolean wallpaperStillsEnabled = res.getBoolean(R.bool.wallpaper_stills_enabled);
+        String wallpaperStillsManifest = res.getString(R.string.wallpaper_stills_manifest).trim();
         boolean tileMenu = res.getBoolean(R.bool.tile_menu);
         String vpn = res.getString(R.string.vpn_app).trim();
         boolean homeSettings = res.getBoolean(R.bool.show_home_settings_shortcut);
@@ -592,6 +621,10 @@ final class Config {
             wallpaperTrueColor = bool(json, "wallpaper_true_color", wallpaperTrueColor);
             focusOvershoot = bool(json, "focus_overshoot", focusOvershoot);
             wallpaperCaptions = bool(json, "wallpaper_captions", wallpaperCaptions);
+            wallpaperVideoEnabled = bool(json, "wallpaper_video_enabled", wallpaperVideoEnabled);
+            wallpaperVideoManifest = string(json, "wallpaper_video_manifest", wallpaperVideoManifest).trim();
+            wallpaperStillsEnabled = bool(json, "wallpaper_stills_enabled", wallpaperStillsEnabled);
+            wallpaperStillsManifest = string(json, "wallpaper_stills_manifest", wallpaperStillsManifest).trim();
             tileMenu = bool(json, "tile_menu", tileMenu);
             vpn = string(json, "vpn_app", vpn);
             homeSettings = bool(json, "show_home_settings_shortcut", homeSettings);
@@ -655,8 +688,11 @@ final class Config {
         SharedPreferences choices = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE);
         // Unmounted storage looks like a theme reset; compare only once the file is readable.
         if (mounted) syncThemeChoices(choices, dir, file);
-        int chosenColumns = choices.getInt("columns", columns);
-        if (chosenColumns >= 4 && chosenColumns <= 7) columns = chosenColumns;
+        // 设置页手动选过列数就用它（含 3）；没选过时按应用数自动决定：应用少用 3 列大卡，
+        // 应用多自动加到 6 列让卡片变小、尽量一屏放得下。
+        int chosenColumns = choices.getInt("columns", -1);
+        if (chosenColumns >= 3 && chosenColumns <= 7) columns = chosenColumns;
+        else columns = AutoColumns.pick(AutoColumns.countApps(ctx));
         int chosenRows = choices.getInt(ROWS_BELOW_DOCK_KEY, rowsBelow);
         if (chosenRows >= 0 && chosenRows <= 3) rowsBelow = chosenRows;
         animations = choices.getBoolean("animations", animations);
@@ -667,9 +703,19 @@ final class Config {
         boolean wallpaperEnabled = json == null || bool(json, "wallpaper", true);
         if (!wallpaperEnabled) wallpaper = null;
         int rotationMinutes = json == null ? 0 : integer(json, "wallpaper_rotation_minutes", 0, 0, 1440);
+        // 桌面设置里选的轮换间隔覆盖主题（1 小时 / 1 天）。必须在下面决定「要不要读 wallpapers/ 目录」之前生效：
+        // 主题没写 wallpaper_rotation_minutes 但带了壁纸目录时，选了间隔才轮播起来。
+        int chosenInterval = choices.getInt(WALLPAPER_INTERVAL_KEY, 0);
+        if (chosenInterval >= 10 && chosenInterval <= 1440) rotationMinutes = chosenInterval;
         int wallpaperDim = json == null ? 0 : integer(json, "wallpaper_dim", 0, 0, 90);
         int dockOpacity = json == null ? 100 : integer(json, "dock_opacity", 100, 30, 100);
         dockOpacity = chosenDockOpacity(choices.getInt(DOCK_OPACITY_KEY, -1), dockOpacity);
+        int dockRadius = res.getInteger(R.integer.dock_radius);
+        int dockPadding = res.getInteger(R.integer.dock_padding);
+        if (json != null) {
+            dockRadius = integer(json, "dock_radius", dockRadius, 0, 64);
+            dockPadding = integer(json, "dock_padding", dockPadding, 0, 48);
+        }
         clockFormat = choices.getString(CLOCK_FORMAT_KEY, clockFormat);
         String wallpaperOrder = json == null ? WallpaperRotation.ORDER_SHUFFLE
                 : string(json, "wallpaper_order", WallpaperRotation.ORDER_SHUFFLE);
@@ -691,6 +737,60 @@ final class Config {
             wallpaper = chosen.isEmpty() ? null : chosen.get(0);
             wallpaperEnabled = !chosen.isEmpty();
         }
+        // Wallpaper source priority: Apple stills are the default, 360 is the fallback. The on-TV 360
+        // switch still wins when the user turns it on explicitly, and an explicit on-TV wallpaper pick
+        // beats any automatic source. The 360 fallback only uses pictures already on disk; warmCache()
+        // tops that cache up in the background so it is ready when the Apple source is unreachable.
+        List<File> appleStills = wallpaperStillsEnabled ? WallpaperStills.files(ctx) : Collections.emptyList();
+        List<File> threeSixty = Wallpaper360.files(ctx);
+        boolean explicit360 = choices.getBoolean(Wallpaper360.PREF_KEY, false);
+        boolean pickedOnTv = wallpaperChoice != null;
+        List<File> source = null;
+        if (explicit360) {
+            if (!threeSixty.isEmpty()) source = threeSixty;
+            else if (!appleStills.isEmpty()) source = appleStills;
+        } else if (!pickedOnTv) {
+            if (!appleStills.isEmpty()) source = appleStills;
+            else if (!threeSixty.isEmpty()) source = threeSixty;
+        }
+        if (source != null) {
+            wallpapers.clear();
+            wallpapers.addAll(source);
+            wallpaper = null;
+            wallpaperEnabled = true;
+            rotationMinutes = Math.max(rotationMinutes, 10);
+            wallpaperOrder = WallpaperRotation.ORDER_SHUFFLE;
+            // SkyView (the weather photo layer) is painted over the wallpaper; leave it on and neither
+            // Apple's nor 360's pictures would be visible at all.
+            skyIntensity = 0;
+        }
+        // Favourites are an explicit on-TV choice and outrank every automatic source: either one
+        // picked picture held on screen, or a rotation limited to the favourites collection.
+        List<File> favourites = WallpaperFavorites.files(ctx);
+        String picked = WallpaperFavorites.selected(ctx);
+        File pickedFile = WallpaperFavorites.find(favourites, picked);
+        if (picked != null && pickedFile == null) WallpaperFavorites.clearSelection(ctx);
+        if (pickedFile != null) {
+            wallpapers.clear();
+            wallpapers.add(pickedFile);
+            wallpaper = pickedFile;
+            wallpaperEnabled = true;
+            rotationMinutes = 0;              // hold this one picture, do not rotate
+            wallpaperOrder = WallpaperRotation.ORDER_SHUFFLE;
+            skyIntensity = 0;
+            wallpaperVideoEnabled = false;    // a still the user picked has to be visible
+        } else if (WallpaperFavorites.only(ctx) && !favourites.isEmpty()) {
+            wallpapers.clear();
+            wallpapers.addAll(favourites);
+            wallpaper = null;
+            wallpaperEnabled = true;
+            rotationMinutes = Math.max(rotationMinutes, 10);
+            wallpaperOrder = WallpaperRotation.ORDER_SHUFFLE;
+            skyIntensity = 0;
+            wallpaperVideoEnabled = false;
+        }
+        // 照片壁纸统一压暗一点：白色文字、图标在任何图上都要看得清（主题给的 wallpaper_dim 更高时以它为准）。
+        if (wallpaperEnabled) wallpaperDim = Math.max(wallpaperDim, 22);
         // A festive skin comes only from a theme; config.xml has no festival. seasonal_skin names one the same way
         // but launchers before it ignore the key, so a theme can carry it without older ones showing the diya skin.
         Festival festival = json == null ? Festival.NONE : Festival.parse(festivalName(json),
@@ -703,14 +803,15 @@ final class Config {
                 iconOnlyButtons, iconOnlyInputs, libraryButton, showLibraryPill, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot,
                 vpn, homeSettings, showStats, gameDay, library, librarySelection, libraryOkOpens, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
-                wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
+                wallpapers, rotationMinutes, wallpaperDim, dockOpacity, dockRadius, dockPadding, wallpaperOrder, applied, festival, inputKeycodes, appKeys, stockHomeRedirect,
                 json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,
                 Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs, tileMenu, dockEvenPadding,
                 dockBand, cinematicDots, cinematicWhiteFocus, wifiStatusColor, cinematicScrim, cinematicArt, wallpaperMoods, gamepadPassthrough,
                 consumeVolumeKeys, powerOnHome, homeLongPressHome, wifiStatusWarnings, topBarApps, showGreeting, headerWhite, clockWallpaper,
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly,
-                Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap);
+                Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
+                wallpaperVideoEnabled, wallpaperVideoManifest, wallpaperStillsEnabled, wallpaperStillsManifest);
     }
 
     /**

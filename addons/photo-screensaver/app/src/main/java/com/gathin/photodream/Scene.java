@@ -138,13 +138,20 @@ final class Scene {
         }
         Weather.locate(context, location -> {
             ExecutorService n = network;
-            if (location == null || n == null || !running) return;
-            double lat = location.getLatitude(), lon = location.getLongitude();
+            if (n == null || !running) return;
+            // 中国天气网 works from a configured city id alone; only the Open-Meteo fallback needs the
+            // TV's own location, so a missing location is fine when a city is set.
+            // final: the values are captured by the lambda below.
+            final double lat = location != null ? location.getLatitude() : Double.NaN;
+            final double lon = location != null ? location.getLongitude() : Double.NaN;
+            if (Double.isNaN(lat) && !Weather.hasCity(context)) {
+                return;   // neither a city nor a location: nothing to show
+            }
             try {
                 n.execute(() -> {
                     String text;
                     try {
-                        text = Weather.now(lat, lon);
+                        text = Weather.now(context, lat, lon);
                     } catch (Exception e) {
                         return;   // offline: keep what shows, try again in half an hour
                     }

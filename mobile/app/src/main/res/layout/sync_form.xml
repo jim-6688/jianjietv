@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/StatusCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            style="@style/RowTitle"
+            android:text="桌面配置（同步到电视）" />
+
+        <TextView
+            style="@style/RowSubtitle"
+            android:layout_marginTop="2dp"
+            android:text="生成 config.json 推到电视并重启桌面生效。只填要改的项即可，空着的不写进配置。" />
+
+        <TextView
+            style="@style/RowSubtitle"
+            android:layout_marginTop="10dp"
+            android:text="列数（1–8）" />
+
+        <EditText
+            android:id="@+id/syncColumns"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_input"
+            android:hint="例如 4（留空则用自动）"
+            android:inputType="number"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp" />
+
+        <TextView
+            style="@style/RowSubtitle"
+            android:layout_marginTop="10dp"
+            android:text="dock_apps（每行一个包名）" />
+
+        <EditText
+            android:id="@+id/syncDock"
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_input"
+            android:gravity="top"
+            android:hint="com.example.app1\ncom.example.app2"
+            android:inputType="textMultiLine"
+            android:padding="14dp"
+            android:textColor="@color/on_surface"
+            android:textSize="14sp" />
+
+        <TextView
+            style="@style/RowSubtitle"
+            android:layout_marginTop="10dp"
+            android:text="hidden_apps（每行一个包名）" />
+
+        <EditText
+            android:id="@+id/syncHidden"
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_input"
+            android:gravity="top"
+            android:hint="com.example.hide1"
+            android:inputType="textMultiLine"
+            android:padding="14dp"
+            android:textColor="@color/on_surface"
+            android:textSize="14sp" />
+
+        <TextView
+            style="@style/RowSubtitle"
+            android:layout_marginTop="10dp"
+            android:text="app_keys（每行 键码:包名，例如 190:com.google.android.youtube.tv）" />
+
+        <EditText
+            android:id="@+id/syncKeys"
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_input"
+            android:gravity="top"
+            android:hint="190:com.google.android.youtube.tv"
+            android:inputType="textMultiLine"
+            android:padding="14dp"
+            android:textColor="@color/on_surface"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/syncPush"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_remote_key"
+            android:text="生成并推送到电视"
+            android:textColor="@color/brand"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>

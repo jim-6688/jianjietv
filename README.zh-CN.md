@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://cleanyour.tv"><img src="docs/banner.png" alt="CleanYourTV：让电视桌面回归简洁" width="800"></a>
+  <a href="https://cleanyour.tv"><img src="docs/banner.png" alt="领先桌面：让电视桌面回归简洁" width="800"></a>
 </p>
 
 <p align="center">
@@ -13,15 +13,30 @@
   <a href="SHOWCASE.md">社区作品</a>
 </p>
 
-# CleanYourTV 中文使用指南
+# 领先桌面 中文使用指南
 
 通过局域网连接 Android TV 或 Google TV，停用不需要的预装应用、广告和遥测服务，并在兼容设备上安装简洁的原生桌面。无需 root、刷机或 USB 数据线；清理工具采用停用方式，不卸载系统应用，并提供恢复脚本。
 
 本文介绍通用功能和使用方法。不同机型、地区和固件的应用包及限制可能不同，请先核对自己的设备。功能变化以[英文 README](README.md)为准，具体机型记录见[机型清单](examples/README.md)。
 
-**Samsung、LG、Roku 或其他非 Android 电视？** CleanYourTV 无法在这些电视上运行，但你仍可以用遥控器一步步关闭跟踪功能：[cleanyour.tv/not-android](https://cleanyour.tv/not-android)
+**Samsung、LG、Roku 或其他非 Android 电视？** 领先桌面 无法在这些电视上运行，但你仍可以用遥控器一步步关闭跟踪功能：[cleanyour.tv/not-android](https://cleanyour.tv/not-android)
 
-![原生 Google TV 桌面与 CleanYourTV 桌面对比](docs/stock-vs-new-side.jpg)
+![原生 Google TV 桌面与 领先桌面 桌面对比](docs/stock-vs-new-side.jpg)
+
+## 领先桌面的本地增强
+
+在原项目基础上，本仓库做了以下面向国内电视的改动（均为**新增**，不改动上游原有行为）：
+
+| 增强 | 说明 |
+|---|---|
+| **国产适配指南** | [docs/devices/zh-cn-domestic-android-tv.md](docs/devices/zh-cn-domestic-android-tv.md)：哪些国产电视是 Android（可用）、华为/荣耀智慧屏是 HarmonyOS（`pm disable-user` 不适用），以及如何在真机枚举包名。 |
+| **国产机型清单** | 新增 `examples/zh-cn-generic-android-tv/`（通用安全基线）以及 `changhong` / `konka` / `dangbei` / `whaley` 四个此前空白的品牌起始清单。 |
+| **守护脚本** | [`tools/guard.py`](tools/guard.py)：定期巡检被停用的包，若被 OTA 或系统重置重新启用则自动再停用；沿用原有「不碰核心包、不动当前 HOME」的安全闸。 |
+| **中国天气网** | 照片屏保的天气改为中国天气网（免 Key，只需城市编码），未配置时仍回退 Open-Meteo。城市码表已离线内置。 |
+| **360 壁纸** | [`addons/photo-screensaver/download_360_wallpapers.py`](addons/photo-screensaver/download_360_wallpapers.py)：从 360 壁纸抓图到本地，再由原有 `sync.sh` 推送到电视。 |
+
+国产品牌机型清单尚未覆盖全部机型：起始清单里标注为「候选」的包名需要先用 `pm list packages` 在真机核对，
+再取消注释转为实测记录。详见[贡献指南](CONTRIBUTING.md)。
 
 ## 工作原理
 
@@ -40,7 +55,7 @@
 | 步骤 | 操作 |
 |---|---|
 | 1. 电视端 | 打开「设置 → 设备偏好设置 → 关于」，在「版本号 / Build」上连续按七次确定，返回后进入开发者选项，开启 USB 调试。如果另有网络调试或 ADB 调试开关，也需要开启。菜单名称因机型而异。 |
-| 2. 电脑端 | 先克隆仓库并在助手中打开该文件夹（`git clone https://github.com/Gathin23/cleanyourtv`），再将 [`PROMPT.md`](PROMPT.md) 的内容交给助手，填写电视型号。 |
+| 2. 电脑端 | 先克隆仓库并在助手中打开该文件夹（`git clone https://gitee.com/jinghe-net/wuai-tv-home`），再将 [`PROMPT.md`](PROMPT.md) 的内容交给助手，填写电视型号。 |
 | 3. 确认需求 | 在电视上接受调试授权，告诉助手常用应用、底部快捷栏中的应用，以及是否保留语音助手、Chromecast 和系统更新。 |
 | 4. 检查结果 | 按提示完成备份、清理和安装，检查应用启动、遥控器操作、输入源和恢复路径。 |
 
@@ -75,7 +90,7 @@
 | 动态效果 | 开启或关闭桌面动画。 |
 | 高级动态效果 | 增加卡片上浮、图标缩放和背景颜色平滑过渡。可能增加内存占用，实际影响取决于电视。 |
 | 跟随主题（重置电视端设置） | 清除电视端的布局与动效选择，恢复当前主题或内置配置。推送或重置主题也会清除这些选择。 |
-| 默认桌面入口 | 打开 Android 的默认桌面选择页，切换到原始桌面或 CleanYourTV。 |
+| 默认桌面入口 | 打开 Android 的默认桌面选择页，切换到原始桌面或 领先桌面。 |
 
 默认桌面入口不负责重新启用已停用的原始桌面。如果原始桌面已被安装脚本停用，需要先按下文恢复。部分电视不提供系统桌面选择页。还可以通过 `show_home_settings_shortcut` 配置单独显示该入口。
 
@@ -155,7 +170,7 @@ TV_HOST=192.168.1.50 launcher/build-and-install.sh
 TV_HOST=192.168.1.50 STOCK_LAUNCHER=none launcher/build-and-install.sh
 ```
 
-`none` 只表示不停用原始桌面，**仍会将 CleanYourTV 设为默认 HOME**。
+`none` 只表示不停用原始桌面，**仍会将 领先桌面 设为默认 HOME**。
 
 ### Windows
 
@@ -177,6 +192,8 @@ PowerShell 安装脚本使用 `-StockLauncher <包名>` 指定原始桌面，或
 | [`tools/b64push.py`](tools/b64push.py) | 分块上传 APK 等大文件并校验。 |
 | [`tools/disable.sh`](tools/disable.sh) / [`tools/restore.sh`](tools/restore.sh) | 应用停用列表，或按照操作前记录恢复。 |
 | [`tools/recovery.py`](tools/recovery.py) | 保存恢复记录并生成恢复命令。 |
+| [`tools/guard.py`](tools/guard.py) | 守护：定期巡检，把被 OTA 重新启用的包再停用。 |
+| [`tools/weather_city.py`](tools/weather_city.py) | 离线查询中国天气网城市编码（免 Key）。 |
 | [`tools/theme.sh`](tools/theme.sh) | 推送或重置主题，并重新启动桌面。 |
 | [`launcher/build-and-install.sh`](launcher/build-and-install.sh) | 编译、安装桌面并切换 HOME。 |
 
@@ -210,6 +227,21 @@ TV_HOST=192.168.1.50 tools/theme.sh --reset
   - **Android 13 及以上**可以只给桌面单独设语言：`tools/venv/bin/python -I tools/tv.py 'cmd locale set-app-locales com.gathin.tvhome --locales zh-CN'`（切英文把 `zh-CN` 换成 `en`）。查当前值用 `cmd locale get-app-locales com.gathin.tvhome`。
   - **Android 12 及以下**只能改电视的系统语言，桌面跟着走。国内电视出厂通常已是简体中文，一般不用动。
 - **时钟屏保**可在电视的屏保设置中选择 Clock；也可执行：`tools/venv/bin/python -I tools/tv.py 'settings put secure screensaver_components com.gathin.tvhome/.ClockDream; settings put secure screensaver_enabled 1'`。
+- **照片屏保与天气**（`photo-screensaver` 插件）：天气默认走中国天气网，**免 Key**，只需把城市编码写进插件目录下的 `weather.txt`。
+  ```bash
+  python3 tools/weather_city.py 杭州    # 查城市编码 -> 101210101
+  TV_HOST=<电视IP> tools/venv/bin/python -I tools/tv.py \
+    "mkdir -p /sdcard/Android/data/com.gathin.photodream/files"
+  TV_HOST=<电视IP> tools/venv/bin/python -I tools/tv.py \
+    "echo 101210101 > /sdcard/Android/data/com.gathin.photodream/files/weather.txt"
+  ```
+  配好后不再需要电视的定位权限。未配置城市码时会回退到 Open-Meteo（按电视定位）。
+- **360 壁纸**：先抓图到本地，再推送并设为屏保。
+  ```bash
+  python3 addons/photo-screensaver/download_360_wallpapers.py --list-categories
+  python3 addons/photo-screensaver/download_360_wallpapers.py --count 20
+  TV_HOST=<电视IP> addons/photo-screensaver/sync.sh
+  ```
 - **输入源键**可在 macOS/Linux 安装时使用 `INPUT_KEY_SERVICE=1` 启用辅助功能服务，以适配 Google TV 的遥控器输入源按钮；Windows 使用 `-InputKeyService`。
 - **HOME / 设置键**可在 macOS/Linux 安装时使用 `HOME_KEY_SERVICE=1`，并通过 `config.xml` 中的按键配置适配部分设备；Windows 使用 `-HomeKeyService`。`settings_key_panel` 可启用快捷设置面板，提供电视设置、显示、网络、应用和桌面设置入口。重装时需重新传入所需的服务选项。
 
@@ -235,10 +267,10 @@ TV_HOST=192.168.1.50 tools/restore.sh examples/xiaomi-mi-tv-4a/debloat.txt
 TV_HOST=192.168.1.50 tools/restore.sh "examples/你的机型/debloat.txt" com.google.android.apps.tv.launcherx
 ```
 
-- 有记录时，优先恢复当时实际拥有 HOME 的组件；当时没有解析到 HOME 或 HOME 已属于 CleanYourTV 时，使用指定的备用包名，未指定则默认尝试 `com.google.android.tvlauncher`。
+- 有记录时，优先恢复当时实际拥有 HOME 的组件；当时没有解析到 HOME 或 HOME 已属于 领先桌面 时，使用指定的备用包名，未指定则默认尝试 `com.google.android.tvlauncher`。
 - 记录中操作前已经停用的包会保持停用。恢复脚本还会尝试启用备用桌面包；如果它不在记录中，脚本无法判断其操作前状态。请先核对备用包名。
 - 缺少记录时，脚本会提示并回退为启用列表内应用、将动画缩放恢复为 `1.0`；这不等同于精确恢复操作前状态。
-- 恢复脚本不会卸载 CleanYourTV，也无法恢复列表之外的手动修改。若要卸载，可在电视「设置 → 应用」中操作。
+- 恢复脚本不会卸载 领先桌面，也无法恢复列表之外的手动修改。若要卸载，可在电视「设置 → 应用」中操作。
 - 无法连接 ADB 时，也可以尝试从电视系统设置中重新启用相关应用。
 
 ## 故障排查

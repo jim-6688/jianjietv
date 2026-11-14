@@ -163,6 +163,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/homeContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
@@ -349,7 +350,7 @@
 
                 <TextView
                     android:id="@+id/btnSettings"
-                    style="@style/TopButton"
+                    style="@style/TopButtonLarge"
                     android:text="@string/settings"
                     android:drawableStart="@drawable/ic_settings"
                     android:nextFocusDown="@+id/grid" />
@@ -363,6 +364,21 @@
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView
+                    android:id="@+id/btnFilmHub"
+                    style="@style/TopButtonLarge"
+                    android:text="@string/film_hub"
+                    android:drawableStart="@drawable/ic_film_pill"
+                    android:nextFocusDown="@+id/grid" />
+
+                <!-- Mirrored counterpart of layout/activity_main.xml's favourite button. -->
+                <TextView
+                    android:id="@+id/btnFavorite"
+                    style="@style/TopButtonIcon"
+                    android:contentDescription="@string/wallpaper_favorite_add"
+                    android:drawableStart="@drawable/ic_star_outline"
+                    android:nextFocusDown="@+id/grid" />
+
+                <TextView
                     android:id="@+id/btnReorder"
                     style="@style/TopButtonIcon"
                     android:contentDescription="@string/reorder"
@@ -371,7 +387,7 @@
 
                 <TextView
                     android:id="@+id/btnVpn"
-                    style="@style/TopButton"
+                    style="@style/TopButtonLarge"
                     android:visibility="gone"
                     android:singleLine="true"
                     android:text="@string/vpn"
@@ -379,7 +395,7 @@
 
                 <TextView
                     android:id="@+id/btnWifi"
-                    style="@style/TopButton"
+                    style="@style/TopButtonLarge"
                     android:maxWidth="180dp"
                     android:singleLine="true"
                     android:ellipsize="end"
@@ -389,7 +405,7 @@
 
                 <TextView
                     android:id="@+id/btnInputs"
-                    style="@style/TopButton"
+                    style="@style/TopButtonLarge"
                     android:text="@string/inputs"
                     android:drawableStart="@drawable/ic_input"
                     android:nextFocusDown="@+id/grid" />

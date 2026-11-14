@@ -45,6 +45,10 @@ android {
 dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
+    // 数据源扫码配置：手机上扫电视上的二维码，生成用。只用 QRCodeWriter 这一条路径，R8 会裁掉其余部分。
+    implementation 'com.google.zxing:core:3.5.3'
+    // 视频壁纸：联网拉取 Aerial 等清单，ExoPlayer 流式循环播放（MediaPlayer 播不了 Apple 的 .mov 直链）。
+    implementation 'androidx.media3:media3-exoplayer:1.4.1'
     // Test only (never in the APK): plain JVM tests for the module card validators, src/test.
     testImplementation 'junit:junit:4.13.2'
 }

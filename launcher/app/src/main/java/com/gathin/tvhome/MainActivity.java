@@ -97,7 +97,7 @@ import java.util.Set;
 public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void attachBaseContext(android.content.Context base) {
-        super.attachBaseContext(LauncherLocale.wrap(base));   // locale
+        super.attachBaseContext(UiScale.wrap(LauncherLocale.wrap(base)));   // locale
     }
 
 
@@ -121,6 +121,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private String liveTvPkg;
     /** Launcher settings' change count this Home was built with (see onResume). */
     private long settingsRevision;
+    /** 贴右侧的桌面设置抽屉（不新开窗口）。 */
+    private HomeDrawer homeDrawer;
+    /** 顶栏「影视」按钮打开的内容页：豆瓣海报墙整屏叠加层（不新开窗口）。 */
+    private FilmHub filmHub;
+    /** 设置/来源抽屉的回调，懒初始化抽屉时复用。 */
+    private final HomeDrawer.Callback drawerCallback = (changed, reorder) -> {
+        if (reorder) getIntent().putExtra(LauncherSettingsActivity.EXTRA_REORDER, true);
+        if (!changed && !reorder) return;
+        settingsRevision = settingsRevision();
+        settingsRecreationPending = reorder;
+        recreate();
+    };
     /** Idle time on Home before ClockActivity; 0 is off (config.xml, home_idle_clock_minutes). */
     private long idleClockMs;
     /** Back on Home opens ClockActivity (config.xml, back_opens_clock). */
@@ -144,6 +156,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private RecyclerView grid;
     private FrameLayout root;
     private WallpaperPlayer wallpaperPlayer;
+    /** Kept so onResume can drive the still-wallpaper fetch without re-parsing the whole theme. */
+    private Config cfg;
     private GlassView glass;
     private View ambient;
     private TextView heroName;
@@ -196,6 +210,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean lunar;
     private int lunarOffset;
     private TextView stats;
+    private View homeWeather;
+    private TextView homeWeatherGlyph;
+    private TextView homeWeatherTemp;
+    private TextView homeWeatherCity;
+    /** 天气卡片右侧的 3 天预报列（今天/明天/后天），取不到数据时整列隐藏。 */
+    private View homeWeatherDays;
+    private final TextView[] homeWeatherDayRows = new TextView[3];
+    /** 天气卡片左侧内容 / 中间竖线：卡片按内容自适应时用来量高度。 */
+    private View homeWeatherLeft;
+    private View homeWeatherDivider;
+    /** 时间旁的内网 / 外网 IP + 连接类型。 */
+    private TextView networkInfo;
+    /** 壁纸偏亮时首页文字切成深色，避免白字糊在浅色照片上。 */
+    private boolean darkText;
+    private boolean toneApplied;
+    /** Guard so the half-hourly weather refresh never overlaps an in-flight fetch. */
+    private boolean weatherFetching;
+    /** Minute of day the last weather fetch started, driving the half-hourly refresh. */
+    private int weatherFetchedMinute = -1;
+    private static final String FILM_PACKAGE = "com.fongmi.android.tv";
     private List<RaceWeekend.Race> raceCalendar;
     private View racePanel;
     private TextView raceKicker, raceHeadline, raceSessions;
@@ -340,6 +374,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** fill_dock false: how many dock slots held an app when reorder mode started. */
     private int dockedAtStart;
     private View btnReorder;
+    /** Home's one-tap "save this wallpaper" star; long-press opens the favourites list. */
+    private TextView btnFavorite;
+    /** The pill's normal icon tint, kept so an unsaved star can go back to it. */
+    private ColorStateList favoriteDefaultTint;
+    /** Champagne gold once the picture on screen is saved; dark on the focused (white) pill, like pill_text. */
+    private static final ColorStateList FAVORITE_GOLD = new ColorStateList(
+            new int[][] { new int[] { android.R.attr.state_focused }, new int[0] },
+            new int[] { 0xFF111111, 0xFFC9A96E });
     /** dock_apps as loaded (config.xml or a theme): a saved Order only applies while these are unchanged. */
     private List<String> dockApps;
     /** fill_dock false: the dock can have empty slots, which reorder mode leaves out and restores afterwards. */
@@ -435,8 +477,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // The pill follows the network callbacks and each return to Home; only the festive light follows the
             // signal level, so only it needs this minute's binder calls (about 7 ms on the UI thread).
             if (festive) updateWifiLabel();
+            // 网络换了 DHCP 地址或改了连接方式，一分钟内跟着更新；公网 IP 走缓存不会每分钟都请求。
+            if (networkInfo != null) NetInfo.bind(MainActivity.this, networkInfo);
             sky.update();
             wallpaperPlayer.update();
+            updateFavoriteButton();   // the rotation may have moved on to a different picture
+            // Refresh the weather (and its backdrop) every half hour so a change in conditions shows up
+            // without a relaunch; day and night still tick over every minute through sky.update().
+            java.util.Calendar now = java.util.Calendar.getInstance();
+            int nowMinute = Sky.minuteOfDay(now.get(java.util.Calendar.HOUR_OF_DAY),
+                    now.get(java.util.Calendar.MINUTE));
+            if (weatherFetchedMinute < 0 || (nowMinute - weatherFetchedMinute + 1440) % 1440 >= 30) {
+                loadHomeWeather();
+            }
             handler.postDelayed(this, MINUTE_MS);
         }
     };
@@ -452,7 +505,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         setContentView(R.layout.activity_main);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
-        Config cfg = Config.load(this);
+        cfg = Config.load(this);
+        // 上传的 py 就是影视 App 的配置源地址：小服务随桌面进程常驻，设置页关掉也不能让地址 404。
+        ConfigServer.start(this, null);
         homeAppKeys = RemoteKeys.parseAppKeys(cfg.appKeys);
         clockFormat = cfg.clockFormat;
         ClockFormat.apply(getWindow().getDecorView(), clockFormat);
@@ -533,6 +588,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
         greeting = findViewById(R.id.greeting);
         clockBlock = findViewById(R.id.leftBlock);
+        homeWeather = findViewById(R.id.homeWeather);
+        homeWeatherGlyph = findViewById(R.id.homeWeatherGlyph);
+        homeWeatherTemp = findViewById(R.id.homeWeatherTemp);
+        homeWeatherCity = findViewById(R.id.homeWeatherCity);
+        homeWeatherDays = findViewById(R.id.homeWeatherDays);
+        homeWeatherLeft = findViewById(R.id.weatherLeft);
+        homeWeatherDivider = findViewById(R.id.weatherDivider);
+        homeWeatherDayRows[0] = findViewById(R.id.homeWeatherDay0);
+        homeWeatherDayRows[1] = findViewById(R.id.homeWeatherDay1);
+        homeWeatherDayRows[2] = findViewById(R.id.homeWeatherDay2);
+        networkInfo = findViewById(R.id.networkInfo);
+        NetInfo.bind(this, networkInfo);
+        // 顶栏与天气卡的背景一起纳入「应用卡片背景色（dock_opacity）」的调节。
+        applyCardOpacity(cfg);
+        // 顶栏高度按头部实际高度自适应，避免天气卡压进顶栏。
+        fitTopBarToHeader();
+        // 文字块与按钮作为一整行居中，网络信息那段按剩余宽度收窄，行宽不会撑破屏幕。
+        fitHeaderRowToWidth();
+        // 文字颜色跟着壁纸明暗走：亮壁纸用深色字，暗壁纸用白字（含阴影），保证始终看得清。
+        if (wallpaperPlayer != null) wallpaperPlayer.setToneListener(this::applyTextTone);
+        loadHomeWeather();
         greetingColor = greeting.getCurrentTextColor();
         if (!cfg.showGreeting) greeting.setVisibility(View.GONE);
         // Keep the other header layouts as designed: their extra lines change the block's centre.
@@ -674,7 +750,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
+        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockRadius, cfg.dockPadding, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
                 singleRow, cfg.dockBandAll));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
@@ -699,7 +775,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
             int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), density);
             int dockRow = itemH + (int) (AppAdapter.DOCK_EXTRA_DP * density);   // item height plus DockDecoration offsets
-            int gridRows = itemH * rowsBelowDock;
+            // 只有确实还有应用排到 dock 下方时才预留空间；应用一屏（一行槽位）就放得下时，
+            // 不再在 dock 下面空出一整行，让图标直接贴到屏幕底部（底栏）。
+            int appCount = adapter == null ? 0 : adapter.appCount();
+            int parkedRows = appCount > COLUMNS ? rowsBelowDock : 0;
+            int gridRows = itemH * parkedRows;
             // Keep the hero below the header when the library is enabled on a short screen,
             // even when the theme requests an extra visible row below the dock.
             int shelfClearance = cfg.appLibrary ? hero.getMeasuredHeight() + (int) (40 * density) : 0;
@@ -709,9 +789,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (MainActivity.this.dockRow && cfg.dockTitle && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
             // No dock to push down: the grid starts at the top, with room for the first row's zoom and glass.
             if (!MainActivity.this.dockRow) want = (int) (AppAdapter.TOP_ROOM_DP * density);
-            // A single row never shows the names under its tiles (the title above the row names the app), so the
-            // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
-            if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
+            // In a single row the name line under a tile is empty until that tile is focused (the title above
+            // names the app), so the 4dp gap and 18dp line would only lift the row: sit it that much lower.
+            if (singleRow && !cfg.alwaysShowNames) want += (int) (22 * density);
             if (grid.getPaddingTop() != want) {
                 grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
                 // A vertical grid parks the dock on the new padding line by scrolling (onTileFocused); a sideways
@@ -816,17 +896,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         launcherSettingsButton = cfg.launcherSettingsButton;
         if (launcherSettingsButton) {
-            ((TextView) btnSettings).setText(R.string.launcher_settings);
+            // 最右侧按钮只显示「设置」，不显示「简洁桌面设置」。
+            ((TextView) btnSettings).setText(R.string.settings);
             ((TextView) btnSettings).setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_home_settings_pill, 0, 0, 0);
         }
         btnSettings.setOnClickListener(v -> {
-            if (launcherSettingsButton) startActivityForResult(
-                    new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
+            if (launcherSettingsButton) openSettingsDrawer();
             else open(systemIntent(Settings.ACTION_SETTINGS));
         });
         btnReorder = findViewById(R.id.btnReorder);
         btnReorder.setOnClickListener(v -> toggleReorder());
         btnReorder.setVisibility(cfg.reorderButton ? View.VISIBLE : View.GONE);
+        btnFavorite = findViewById(R.id.btnFavorite);
+        favoriteDefaultTint = btnFavorite.getCompoundDrawableTintList();
+        btnFavorite.setOnClickListener(v -> toggleWallpaperFavorite());
+        btnFavorite.setOnLongClickListener(v -> { openWallpaperFavorites(); return true; });
+        updateFavoriteButton();
         if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
         showInputsPill = cfg.showInputsPill;
         showInputsMenuRow = cfg.showInputsPill;
@@ -836,6 +921,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             libraryFromTopBar = true;   // closing it goes back to this button, not to the pill after the last row
         });
         btnLibraryTop.setVisibility(cfg.libraryButton && cfg.appLibrary ? View.VISIBLE : View.GONE);
+        // 顶栏「影视」：打开豆瓣海报内容页。与遥控器「向下到底直接开影视 App」互不干扰。
+        final View btnFilmHub = findViewById(R.id.btnFilmHub);
+        if (btnFilmHub != null) btnFilmHub.setOnClickListener(v -> openFilmHub());
         addTopBarApps(cfg.topBarApps, cfg.launchActions);
         iconOnlyButtons = cfg.iconOnlyButtons;
         topMenu = cfg.topMenu;
@@ -859,12 +947,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (!iconOnlyButtons) makeIconOnly((TextView) btnSettings);
             btnSettings.setOnClickListener(v -> showTopMenu());
             // The lone gear sits at the header's middle, not on its bottom line like the row of pills.
-            LinearLayout topButtons = findViewById(R.id.topButtons);
-            RelativeLayout.LayoutParams tlp = (RelativeLayout.LayoutParams) topButtons.getLayoutParams();
-            tlp.addRule(RelativeLayout.ALIGN_TOP, R.id.leftBlock);
-            tlp.bottomMargin = 0;
-            topButtons.setLayoutParams(tlp);
-            topButtons.setGravity(Gravity.CENTER_VERTICAL);
+            alignTopButtonsWithClockRow(findViewById(R.id.topButtons));
         }
         if (iconOnlyButtons) {
             if (cfg.wifiLabelWidth > 0) btnWifi.setMaxWidth(Math.round(cfg.wifiLabelWidth * density));
@@ -906,9 +989,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
         btnLibraryTop.setOnKeyListener(pillKeys);
+        if (btnFilmHub != null) btnFilmHub.setOnKeyListener(pillKeys);
         for (View button : topAppButtons) button.setOnKeyListener(pillKeys);
         if (advancedEffects) {
             List<View> pills = new ArrayList<>(Arrays.asList(btnInputs, btnWifi, btnVpn, btnReorder, btnLibraryTop, btnSettings));
+            if (btnFilmHub != null) pills.add(btnFilmHub);
             pills.addAll(topAppButtons);
             for (View button : pills) {
                 button.setOnFocusChangeListener((view, focused) -> view.animate()
@@ -1028,7 +1113,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean openLauncherSettingsIfAsked(Intent intent) {
         if (intent == null || !ACTION_LAUNCHER_SETTINGS.equals(intent.getAction())) return false;
         setIntent(new Intent(Intent.ACTION_MAIN));
-        startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
+        openSettingsDrawer();
         return true;
     }
 
@@ -1106,6 +1191,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openLiveTvAfterBoot()) return;
         updateGreeting();
         updatePanel();
+        if (networkInfo != null) NetInfo.bind(this, networkInfo);
         // Back from an app opened from its tile, focus is still on that tile, so the cinematic "Last opened" line kept
         // the time from before this launch ("2 days ago" right after opening it). Refresh it.
         if (cinematic && heroMeta != null && lastFocused >= 0 && lastFocused < adapter.appCount()) updateHeroMeta(lastFocused);
@@ -1124,6 +1210,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (gameDay != null) gameDay.start();
         sky.update();
         wallpaperPlayer.start();
+        updateFavoriteButton();
+        // Apple stills are the default picture source; 360's local cache is the fallback. Fetch both
+        // in the background, then swap the rotation's collection in once the pictures land.
+        if (cfg != null && cfg.wallpaperStillsEnabled && !cfg.wallpaperVideoEnabled) {
+            WallpaperStills.fetchIfNeeded(this, cfg.wallpaperStillsManifest, this::refreshStills);
+            // Only warm 360 while Apple's set is still empty: no point hitting its API every resume.
+            if (WallpaperStills.files(this).isEmpty()) Wallpaper360.warmCache(this);
+        }
+        // 360 wallpapers: top up / refresh the local collection when Home comes back into view.
+        if (Wallpaper360.enabled(this)) Wallpaper360.fetchIfNeeded(this);
         handler.postDelayed(minuteTick, MINUTE_MS);
         if (festive && lamp != null) {
             lamp.start();
@@ -1133,6 +1229,50 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 handler.postDelayed(this::playPetalShower, 450);
             }
         }
+    }
+
+    /**
+     * After a background still-wallpaper fetch, point the rotation at the freshest on-disk source:
+     * Apple's pictures first, 360's local cache if Apple has none yet. An explicit on-TV wallpaper
+     * pick, the 360 switch, or video wallpaper all keep their own choice.
+     */
+    private void refreshStills() {
+        if (isFinishing() || isDestroyed() || wallpaperPlayer == null || cfg == null) return;
+        if (!cfg.wallpaperStillsEnabled || cfg.wallpaperVideoEnabled) return;
+        SharedPreferences choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
+        if (choices.getString(Config.WALLPAPER_CHOICE_KEY, null) != null) return;
+        if (Wallpaper360.enabled(this)) return;
+        List<File> source = WallpaperStills.files(this);
+        if (source.isEmpty()) source = Wallpaper360.files(this);
+        if (source.isEmpty()) return;
+        wallpaperPlayer.setFiles(source);
+    }
+
+    /** Star tap: save or unsave the picture currently on screen, then repaint the button and the rotation. */
+    private void toggleWallpaperFavorite() {
+        WallpaperFavorites.toggle(this);
+        updateFavoriteButton();
+        // With "favourites only" on, a newly saved picture joins the rotation without waiting for a rebuild.
+        if (WallpaperFavorites.only(this) && wallpaperPlayer != null) {
+            wallpaperPlayer.setFiles(WallpaperFavorites.files(this));
+        }
+    }
+
+    /** Star long-press: the same favourites list as Launcher settings. */
+    private void openWallpaperFavorites() {
+        WallpaperFavorites.showPicker(this, this::recreate, this::updateFavoriteButton);
+    }
+
+    /** Hollow star / gold filled star, and a content description that says what the next tap will do. */
+    private void updateFavoriteButton() {
+        if (btnFavorite == null) return;
+        boolean saved = WallpaperFavorites.contains(
+                WallpaperFavorites.files(this), WallpaperFavorites.current(this));
+        btnFavorite.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                saved ? R.drawable.ic_star_filled : R.drawable.ic_star_outline, 0, 0, 0);
+        btnFavorite.setCompoundDrawableTintList(saved ? FAVORITE_GOLD : favoriteDefaultTint);
+        btnFavorite.setContentDescription(getString(saved
+                ? R.string.wallpaper_favorite_remove : R.string.wallpaper_favorite_add));
     }
 
     /** Launcher settings' change count (Config.SETTINGS_REVISION_KEY); onResume rebuilds Home when it moved. */
@@ -1162,6 +1302,49 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 || !getIntent().getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false)) return;
         getIntent().removeExtra(LauncherSettingsActivity.EXTRA_REORDER);
         toggleReorder();
+    }
+
+    /** 桌面设置：首页里贴右侧滑出，不再启动独立窗口。 */
+    private void openSettingsDrawer() {
+        if (isFinishing() || isDestroyed()) return;
+        if (homeDrawer == null) {
+            homeDrawer = new HomeDrawer(this, root, drawerCallback);
+        }
+        homeDrawer.showSettings();
+    }
+
+    /** 顶栏「影视」按钮：内容页（豆瓣海报墙）整屏叠加层，不启动新窗口。 */
+    private void openFilmHub() {
+        if (isFinishing() || isDestroyed()) return;
+        if (filmHub == null) {
+            filmHub = new FilmHub(new FilmHub.Host() {
+                @Override
+                public Activity activity() {
+                    return MainActivity.this;
+                }
+
+                @Override
+                public void openSources() {
+                    // 内容页里点「换源」：先关内容页，再开来源抽屉。
+                    openSourcesDrawer();
+                }
+
+                @Override
+                public void onHubClosed() {
+                    // 关闭后无需特殊处理
+                }
+            }, root);
+        }
+        filmHub.show();
+    }
+
+    /** 直接打开右侧来源抽屉（内容页 / 设置里的换源共用）。 */
+    private void openSourcesDrawer() {
+        if (isFinishing() || isDestroyed()) return;
+        if (homeDrawer == null) {
+            homeDrawer = new HomeDrawer(this, root, drawerCallback);
+        }
+        homeDrawer.showSourcesOnly();
     }
 
     /** Rebuilds the tiles (and the module cards), then puts focus back where it was. */
@@ -1408,8 +1591,253 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * - a tile carried: arrows move it; Back (or OK) puts it down and the mode stays on for the next one.
      * Other keys (volume, Home) pass through; leaving the launcher ends the mode and saves.
      */
+    /** 先进影视（com.fongmi.android.tv）；未安装时返回 false，交回正常导航。 */
+    private boolean launchFilm() {
+        PackageManager pm = getPackageManager();
+        Intent open = pm.getLeanbackLaunchIntentForPackage(FILM_PACKAGE);
+        if (open == null) open = pm.getLaunchIntentForPackage(FILM_PACKAGE);
+        if (open == null) return false;
+        try {
+            startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return true;
+        } catch (ActivityNotFoundException | SecurityException ignored) {
+            return false;
+        }
+    }
+
+    /** 首页天气大卡片：中国天气网实况（城市/温度/图标/天气）+ 可选 3 天预报。后台线程取数，取不到时隐藏卡片。 */
+    /**
+     * 顶栏与天气卡的背景纳入「应用卡片背景色（dock_opacity）」：把同一透明度套到它们的背景 drawable 上，
+     * 这样调节 dock 卡片深浅时，顶栏和天气卡会一起变，风格统一。
+     */
+    private void applyCardOpacity(Config cfg) {
+        int alpha = Math.round(cfg.dockOpacity * 255f / 100f);
+        applyBgAlpha(findViewById(R.id.topBar), alpha);
+        applyBgAlpha(findViewById(R.id.homeWeather), alpha);
+    }
+
+    /** 顶栏实色条的底边：右侧抽屉面板从这里开始，不盖住顶栏按钮。 */
+    int topBarBottom() {
+        View bar = findViewById(R.id.topBar);
+        return bar != null ? bar.getBottom() : 0;
+    }
+
+    /**
+     * 顶栏（实色条）高度随头部内容自适应：单行头部比原来的固定 132dp 矮很多，
+     * 固定高度会让天气卡压进顶栏。这里量出头部实际高度，并让实色条以头部为中心
+     * 上下对称留白——文字与按钮因此落在条的中线上，而不是贴着条的下边缘。
+     */
+    private void fitTopBarToHeader() {
+        View topBar = findViewById(R.id.topBar);
+        if (topBar == null || clockBlock == null) return;
+        // 量整行（文字块 + 按钮）：按钮比文字高时，顶栏也不能只按文字块收。
+        View found = findViewById(R.id.headerRow);
+        final View header = found != null ? found : (View) clockBlock.getParent();
+        final View content = findViewById(R.id.homeContent);
+        if (header == null) return;
+        header.post(() -> {
+            int h = header.getHeight();
+            if (h <= 0) return;
+            float d = getResources().getDisplayMetrics().density;
+            ViewGroup.LayoutParams lp = topBar.getLayoutParams();
+            // 上边距取 homeContent 真实的 paddingTop，下边距给同样的值，头部正好居中。
+            // 读实际值而不是写死 20dp：改版式/RTL 布局调了内边距也不会重新偏心。
+            int inset = content != null && content.getPaddingTop() > 0
+                    ? content.getPaddingTop() : Math.round(20 * d);
+            lp.height = inset * 2 + h;
+            topBar.setLayoutParams(lp);
+        });
+    }
+
+    /**
+     * 顶栏整行水平居中，但不许撑破屏幕：网络信息（本机 / 外网 IP）是最长的一段，
+     * 量出文字块与按钮的自然宽度后，把它的 maxWidth 收到「这一行真正还剩多少」：
+     * 内容窄于屏幕时整行居中、两侧留白相等；内容再长也只是这段文字自己省略，不会把按钮挤出屏幕。
+     */
+    private void fitHeaderRowToWidth() {
+        final LinearLayout row = findViewById(R.id.headerRow);
+        final LinearLayout texts = findViewById(R.id.leftBlock);
+        final View buttons = findViewById(R.id.topButtons);
+        if (row == null || texts == null || buttons == null || networkInfo == null) return;
+        row.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            int available = row.getWidth() - row.getPaddingStart() - row.getPaddingEnd();
+            int buttonsWidth = buttons.getWidth();
+            if (available <= 0 || buttonsWidth <= 0) return;
+            int naturalIp = naturalWidth(networkInfo);
+            int fixedTexts = naturalWidth(texts) - naturalIp;
+            int room = available - fixedTexts - marginStart(networkInfo) - marginStart(buttons) - buttonsWidth;
+            int max = Math.max(0, room);
+            if (networkInfo.getMaxWidth() != max) networkInfo.setMaxWidth(max);
+        });
+    }
+
+    /** 视图在不限宽时的自然宽度：用来看「这一行到底想占多宽」。 */
+    private static int naturalWidth(View v) {
+        int spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        v.measure(spec, spec);
+        return v.getMeasuredWidth();
+    }
+
+    /** 左边距（不支持 start/end 的老版本上退回 leftMargin）。 */
+    private static int marginStart(View v) {
+        ViewGroup.LayoutParams params = v.getLayoutParams();
+        if (!(params instanceof ViewGroup.MarginLayoutParams)) return 0;
+        ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) params;
+        return margins.getMarginStart();
+    }
+
+    private static void applyBgAlpha(View v, int alpha) {
+        if (v == null) return;
+        Drawable bg = v.getBackground();
+        if (bg == null) return;
+        Drawable copy = bg.mutate();   // 资源 drawable 共享常量状态，先 mutate 再改，避免影响其它页面
+        copy.setAlpha(alpha);
+        v.setBackground(copy);
+    }
+
+    private void loadHomeWeather() {
+        if (homeWeather == null || weatherFetching) return;
+        weatherFetching = true;
+        java.util.Calendar started = java.util.Calendar.getInstance();
+        weatherFetchedMinute = Sky.minuteOfDay(started.get(java.util.Calendar.HOUR_OF_DAY),
+                started.get(java.util.Calendar.MINUTE));
+        new Thread(() -> {
+            HomeWeather.Snapshot snap = HomeWeather.snapshot(MainActivity.this);
+            java.util.List<HomeWeather.Day> days = HomeWeather.days(MainActivity.this);
+            weatherFetching = false;
+            if (snap == null) return;
+            runOnUiThread(() -> {
+                // Drive the weather wallpaper: same palette, tinted by today's condition, day/night by clock.
+                if (sky != null) sky.setWeather(snap.condition);
+                // 图标和温度用彩色：图标按天气上色，温度按冷热上色。
+                if (homeWeatherGlyph != null) {
+                    homeWeatherGlyph.setText(snap.glyph);
+                    homeWeatherGlyph.setTextColor(glyphColor(snap.glyph));
+                }
+                if (homeWeatherTemp != null) {
+                    homeWeatherTemp.setText(snap.temp + "°");
+                    homeWeatherTemp.setTextColor(tempColor(snap.temp));
+                }
+                if (homeWeatherCity != null) {
+                    String sub = snap.city;
+                    if (!snap.condition.isEmpty()) {
+                        sub = sub.isEmpty() ? snap.condition : sub + " · " + snap.condition;
+                    }
+                    homeWeatherCity.setText(sub);
+                }
+                // 右侧 3 天预报：有几行填几行，一行都没有就整列隐藏，卡片回到单栏宽度。
+                boolean hasDays = days != null && !days.isEmpty();
+                if (homeWeatherDays != null) {
+                    if (!hasDays) {
+                        homeWeatherDays.setVisibility(View.GONE);
+                    } else {
+                        for (int i = 0; i < homeWeatherDayRows.length; i++) {
+                            TextView row = homeWeatherDayRows[i];
+                            if (row == null) continue;
+                            if (i < days.size()) {
+                                row.setText(dayLine(days.get(i)));
+                                row.setVisibility(View.VISIBLE);
+                            } else {
+                                row.setVisibility(View.GONE);
+                            }
+                        }
+                        homeWeatherDays.setVisibility(View.VISIBLE);
+                    }
+                }
+                // 没有预报时连竖线一起去掉；卡片宽度由 wrap_content 跟随实际内容。
+                if (homeWeatherDivider != null) homeWeatherDivider.setVisibility(hasDays ? View.VISIBLE : View.GONE);
+                homeWeather.setVisibility(View.VISIBLE);
+                // 竖线高度跟随左侧实况（或右侧预报）实测高度，卡片因此按内容自适应，不留固定空白。
+                if (homeWeatherDivider != null && homeWeatherLeft != null) {
+                    homeWeather.post(() -> {
+                        int h = homeWeatherLeft.getHeight();
+                        if (hasDays && homeWeatherDays != null) h = Math.max(h, homeWeatherDays.getHeight());
+                        if (h <= 0) return;
+                        android.view.ViewGroup.LayoutParams lp = homeWeatherDivider.getLayoutParams();
+                        lp.height = Math.max(1, Math.round(h * 0.88f));
+                        homeWeatherDivider.setLayoutParams(lp);
+                    });
+                }
+            });
+        }).start();
+    }
+
+    /**
+     * 按壁纸亮度给「没有背景框」的文字定色：壁纸偏亮（>0.45）用近黑字 + 白描边阴影，壁纸偏暗用
+     * 白字 + 黑阴影。顶栏已是实色深色条、天气/图标卡片也已调深，框内的白字恒定，不参与切换，
+     * 否则亮壁纸时深色字会糊在深色框上。
+     */
+    private void applyTextTone(float luminance) {
+        boolean dark = luminance > 0.45f;
+        android.util.Log.i("TvHome.Tone", "applyTextTone " + luminance + " dark=" + dark);
+        if (toneApplied && dark == darkText) return;
+        darkText = dark;
+        toneApplied = true;
+        int primary = dark ? 0xFF12171C : 0xFFFFFFFF;
+        int muted = dark ? 0xD912171C : 0xA6FFFFFF;
+        int shadow = dark ? 0x59FFFFFF : 0x80000000;
+        tint(stats, muted, shadow, 8);
+        tint(heroName, primary, shadow, 18);
+    }
+
+    private void tint(View view, int color, int shadowColor, int radius) {
+        if (!(view instanceof TextView)) return;
+        TextView text = (TextView) view;
+        text.setTextColor(color);
+        text.setShadowLayer(radius, 0, 2, shadowColor);
+    }
+
+    /** 天气图标按天气上色（晴=暖黄、雨=蓝、雪=冰蓝、雷=金）。 */
+    private static int glyphColor(String glyph) {
+        if (glyph == null) return 0xFFAFC2D4;
+        if (glyph.contains("☀")) return 0xFFFFC24B;
+        if (glyph.contains("🌧")) return 0xFF5FB2FF;
+        if (glyph.contains("❄")) return 0xFFA8E6FF;
+        if (glyph.contains("⚡")) return 0xFFFFD166;
+        if (glyph.contains("⛅")) return 0xFFC9DDF0;
+        return 0xFFAFC2D4;
+    }
+
+    /** 温度按冷热上色：冰蓝 → 浅蓝 → 暖黄 → 橙 → 红。 */
+    private static int tempColor(int temp) {
+        if (temp <= 0) return 0xFF7FD4FF;
+        if (temp < 10) return 0xFF9BD9FF;
+        if (temp < 20) return 0xFFFFD166;
+        if (temp < 30) return 0xFFFFA94D;
+        return 0xFFFF6B6B;
+    }
+
+    /** 3 天预报的一行：图标和温度上色，标签（今天/明天/后天）跟随壁纸的深浅色。 */
+    private CharSequence dayLine(HomeWeather.Day day) {
+        String line = day.line();
+        SpannableString span = new SpannableString(line);
+        int glyphAt = line.indexOf(day.glyph);
+        if (glyphAt >= 0) {
+            span.setSpan(new ForegroundColorSpan(glyphColor(day.glyph)), glyphAt,
+                    glyphAt + day.glyph.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        int tempAt = line.indexOf(day.hi + "°");
+        if (tempAt >= 0) {
+            span.setSpan(new ForegroundColorSpan(tempColor(temperature(day.hi))), tempAt,
+                    line.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return span;
+    }
+
+    /** "−3" → -3；取不到时给个中性值，避免颜色跳变。 */
+    private static int temperature(String text) {
+        try {
+            return Integer.parseInt(text.replace('−', '-'));
+        } catch (RuntimeException e) {
+            return 15;
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        // 影视内容页 / 右侧设置抽屉打开时，返回键先收起，不吃掉其它方向键。
+        if (filmHub != null && filmHub.onKey(event)) return true;
+        if (homeDrawer != null && homeDrawer.onKey(event)) return true;
         // Vendor keys (TCL Netflix button, 4062) never reach the key services, only the focused window, so their
         // "hold:" entries run here too or nowhere. Only while resumed: onPause releases Home's holds, and a DOWN
         // taken after that would arm one nothing releases.
@@ -1744,6 +2172,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (filmHub != null && filmHub.isShowing()) return;      // dispatchKeyEvent 已收起内容页
+        if (homeDrawer != null && homeDrawer.isShowing()) return;   // dispatchKeyEvent 已收起抽屉
         // Home screen: Back goes nowhere, unless back_opens_clock is on.
         if (backOpensClock) startActivity(new Intent(this, ClockActivity.class));
     }
@@ -2455,7 +2885,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;
             if (position >= lastRowStart) {
+                // 网格最底一行：下面没有应用了。继续向下就是影视 App——影视墙已经从「向下」摘掉，
+                // 播放在影视 App 里，所以这里直接进 App，不再先给一层海报墙。
                 if (adapter.isLibraryAt(count)) focusLibrary();
+                else launchFilm();
                 return true;
             }
             target = Math.min(position + COLUMNS, count - 1);
@@ -2480,6 +2913,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void moveDateBelowClock() {
         View column = (View) findViewById(R.id.date).getParent();
         View clockRow = (View) findViewById(R.id.clock).getParent();
+        // 单行顶栏里日期本来就排在时间右边，没有单独的一列可以搬，保持原样即可。
+        if (column == clockRow) return;
         LinearLayout clockColumn = (LinearLayout) clockRow.getParent();
         ((ViewGroup) column.getParent()).removeView(column);
         findViewById(R.id.clockDivider).setVisibility(View.GONE);
@@ -2506,6 +2941,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    /**
+     * 顶栏按钮与文字那一行垂直对齐。
+     * 单行居中的顶栏里，文字块和按钮本来就并排放在同一个水平 LinearLayout 里、默认垂直居中，
+     * 不用再动版式；只有旧的 RelativeLayout 版式（希伯来语布局、老主题）才需要把它们钉到文字块顶部。
+     */
+    private void alignTopButtonsWithClockRow(LinearLayout buttons) {
+        if (buttons == null) return;
+        ViewGroup.LayoutParams params = buttons.getLayoutParams();
+        if (params instanceof RelativeLayout.LayoutParams) {
+            RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) params;
+            lp.addRule(RelativeLayout.ALIGN_TOP, R.id.leftBlock);
+            lp.removeRule(RelativeLayout.ALIGN_BOTTOM);
+            lp.topMargin = 0;
+            lp.bottomMargin = 0;
+            buttons.setLayoutParams(lp);
+        }
+        buttons.setGravity(Gravity.CENTER_VERTICAL);
+    }
+
     /** Centre the one-row header when the greeting and extra date lines are absent (#2265). */
     private void centerCompactHeader() {
         LinearLayout clockRow = (LinearLayout) findViewById(R.id.clock).getParent();
@@ -2518,12 +2972,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             lp.bottomMargin = 0;
             column.setLayoutParams(lp);
         }
-        LinearLayout buttons = findViewById(R.id.topButtons);
-        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) buttons.getLayoutParams();
-        lp.addRule(RelativeLayout.ALIGN_TOP, R.id.leftBlock);
-        lp.bottomMargin = 0;
-        buttons.setLayoutParams(lp);
-        buttons.setGravity(Gravity.CENTER_VERTICAL);
+        alignTopButtonsWithClockRow(findViewById(R.id.topButtons));
     }
 
     /** With the date below, keep the icons beside the clock rather than beside the last date line. */
@@ -2531,12 +2980,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View clock = findViewById(R.id.clock);
         View clockRow = (View) clock.getParent();
         LinearLayout buttons = findViewById(R.id.topButtons);
-        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) buttons.getLayoutParams();
-        lp.addRule(RelativeLayout.ALIGN_TOP, R.id.leftBlock);
-        lp.removeRule(RelativeLayout.ALIGN_BOTTOM);
-        lp.topMargin = 0;
-        lp.bottomMargin = 0;
-        buttons.setLayoutParams(lp);
+        // 旧的 RelativeLayout 版式里两者不在同一层，要靠 translationY 把按钮对到时间行上；
+        // 单行居中的顶栏里它们同在一行、本来就已经对齐，再挪反而会把整行推得不居中。
+        boolean stackedHeader = buttons.getLayoutParams() instanceof RelativeLayout.LayoutParams;
+        alignTopButtonsWithClockRow(buttons);
+        if (!stackedHeader) return;
         // Either side can be laid out first; update after both without requesting another layout mid-pass.
         Runnable align = () -> buttons.setTranslationY(clockRow.getTop() + clock.getTop()
                 + (clock.getHeight() - buttons.getHeight()) / 2f);
@@ -2602,6 +3050,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (adapter.appCount() == 0) { firstTopButton().requestFocus(); return; }
         int lastRow = ((adapter.appCount() - 1) / COLUMNS) * COLUMNS;
         focusTile(Math.min(lastRow + lastFocused % COLUMNS, adapter.appCount() - 1));
+    }
+
+    /** 应用库药丸是整个首页最下面的一行：再按「向下」就进影视 App，和网格最后一行一致。 */
+    @Override public void onLibraryDown() {
+        launchFilm();
     }
 
     private void focusLibrary() {
@@ -3671,7 +4124,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         addInputRow(rows, popup, R.drawable.ic_swap_vert, getString(R.string.reorder), -1, this::toggleReorder);
         if (launcherSettingsButton) {
             addInputRow(rows, popup, R.drawable.ic_home_settings_pill, getString(R.string.launcher_settings), -1,
-                    () -> startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
+                    this::openSettingsDrawer);
         } else {
             addInputRow(rows, popup, R.drawable.ic_settings, getString(R.string.settings), -1,
                     () -> open(systemIntent(Settings.ACTION_SETTINGS)));
@@ -3688,8 +4141,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
-        if (!launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
-                new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
+        if (!launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.launcher_settings, this::openSettingsDrawer);
+        // With the header gear opening the launcher settings directly, keep TV Settings reachable from the menu.
+        if (launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.settings,
+                () -> open(systemIntent(Settings.ACTION_SETTINGS)));
         // Firmware that ships its own settings app next to the AOSP one (Xiaomi China is one): the
         // vendor app holds pages the AOSP settings has no row for, such as Account & Security with
         // the ADB switch. Offered here only while one of them is installed.

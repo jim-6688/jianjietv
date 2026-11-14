@@ -290,12 +290,13 @@
          with the three, hold OK keeps the launcher menu. Off by default; a theme can set "top_menu": true. -->
     <bool name="top_menu">false</bool>
     <!-- A direct Launcher settings action instead of TV Settings in the header (or top_menu).
-         Off by default; a theme can set "launcher_settings_button": true. -->
-    <bool name="launcher_settings_button">false</bool>
+         On by default so the header gear opens the launcher's own settings (桌面设置); long-press still
+         offers TV Settings. A theme can set "launcher_settings_button": false to go back to TV Settings. -->
+    <bool name="launcher_settings_button">true</bool>
     <!-- The dock band as light frosted glass, like the Inputs, Wi-Fi and Settings pills, so a sky or wallpaper shows
          through it. false (the default) keeps the solid near-black band, or the cinematic shelf's dark glass. Can
          also be set with "dock_glass": true in a theme's config.json. -->
-    <bool name="dock_glass">false</bool>
+    <bool name="dock_glass">true</bool>
     <!-- Draw the dock band and its edge. false leaves the tiles floating on the wallpaper (config.xml dock_band). -->
     <bool name="dock_band">true</bool>
     <!-- Every app in one row: the dock apps first, the rest after them, and the row scrolls sideways when focus
@@ -309,6 +310,10 @@
          so its corners are concentric with the tiles' and the spacing reads even. false (the default) keeps the fixed
          14dp above and below, up to 22dp at the sides and 26dp corners. Can also be set with "dock_even_padding": true in a theme's config.json. -->
     <bool name="dock_even_padding">false</bool>
+    <!-- The dock band's corner radius in dp (dock_radius): bigger is more pill-like. -->
+    <integer name="dock_radius">28</integer>
+    <!-- The dock band's padding around its tiles in dp (dock_padding): room above, below and at the sides. -->
+    <integer name="dock_padding">16</integer>
     <!-- A reorder button (two arrows) in the top bar. Off by default: reordering is also in the Settings
          button's long-press menu, so it needs no extra button on screen. -->
     <bool name="reorder_button">false</bool>
@@ -334,11 +339,11 @@
          of white for both. Can also be set with "wifi_status_warnings": true in a theme's config.json. -->
     <bool name="wifi_status_warnings">false</bool>
     <!-- The app library as a round button in the top bar, beside Settings (app_library must be on too). -->
-    <bool name="library_button">false</bool>
+    <bool name="library_button">true</bool>
     <!-- The App library pill after the last Home row. false hides it while library_button is on, so the top-bar
-         button stays the way in, and Down from the last row stays put as with app_library off. Can also be set
+         button stays the way in, and Down from the last row goes straight to 影视 as it does below. Can also be set
          with "show_library_pill": false in a theme's config.json. -->
-    <bool name="show_library_pill">true</bool>
+    <bool name="show_library_pill">false</bool>
     <!-- With icon_only_buttons: keep the network name on the Wi-Fi pill up to this width in dp, cut with an ellipsis.
          0 leaves the Wi-Fi pill as an icon. -->
     <integer name="wifi_label_width">0</integer>
@@ -361,7 +366,7 @@
     <bool name="inputs_connected_only">false</bool>
     <!-- Names under every tile, not only the focused one: unfocused names stay dimmed, the focused one is full white.
          With dock_row the band grows down to hold the dock's names too. -->
-    <bool name="always_show_names">false</bool>
+    <bool name="always_show_names">true</bool>
     <!-- Wallpapers decode as RGB_565 (2 bytes a pixel, 4 MB at 1080p), which bands dark gradients such as a night
          sky, most of all under wallpaper_dim. true decodes them in 32-bit colour: 8 MB, for TVs with 2 GB or more. -->
     <bool name="wallpaper_true_color">false</bool>
@@ -369,6 +374,19 @@
          pictures in wallpapers/ ("01-dusk.jpg<TAB>Dusk over the peaks", one per line). A picture without a line
          shows no name. Can also be set with "wallpaper_captions": true in a theme's config.json. -->
     <bool name="wallpaper_captions">false</bool>
+    <!-- Video wallpaper: stream a looping, muted clip behind Home instead of a still picture (Aerial-style).
+         Off by default. A theme can set "wallpaper_video_enabled": true and point wallpaper_video_manifest
+         at "aerial" (the built-in Apple Aerial list) or a remote {"videos":[{"url":...}]} manifest URL. -->
+    <bool name="wallpaper_video_enabled">false</bool>
+    <string name="wallpaper_video_manifest" translatable="false">aerial</string>
+    <!-- Apple still wallpapers: the default picture source. A curated list of Apple macOS landscape
+         wallpapers (assets/apple_stills.json) is downloaded onto local storage at runtime and rotated
+         like the theme's wallpapers folder. When the collection is empty or unreachable, the local
+         360 cache takes over as the fallback. On by default; a theme can set
+         "wallpaper_stills_enabled": false or point wallpaper_stills_manifest at a remote
+         {"images":[{"url":...}]} manifest URL. -->
+    <bool name="wallpaper_stills_enabled">true</bool>
+    <string name="wallpaper_stills_manifest" translatable="false">apple</string>
     <!-- Rotating wallpapers grouped by the time of day, as JSON: {"morning": [file names], "evening": [...],
          "night": [...]}. While set, the rotation picks only from the group that fits now: morning from sunrise to
          noon, evening until half an hour after sunset, night the rest, with the sun at latitude and longitude (07:00
@@ -383,15 +401,19 @@
 
     <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. Tiles shrink if
          the dock, its title and this many rows would not otherwise fit the screen height. -->
-    <integer name="rows_below_dock">0</integer>
+    <integer name="rows_below_dock">1</integer>
 
-    <!-- The focused dock app's name in large type above the dock. false keeps only the glow, which leaves room
-         for bigger tiles when rows_below_dock is 2 or 3. -->
-    <bool name="dock_title">true</bool>
+    <!-- The focused dock app's name in large type above the dock. Off: the big 3-column app cards put the name
+         inside the card itself, and the tall hero line would crowd the dock row off a 1080p screen. The glow
+         stays. A theme can set "dock_title": true to bring the heading back. -->
+    <bool name="dock_title">false</bool>
 
-    <!-- Tiles per row in the grid; the dock always has this many slots. Tiles are 180dp wide at 4 columns and
-         shrink to fit from 5 up (about 144dp at 5, 117dp at 6 on a 1080p TV). -->
-    <integer name="columns">4</integer>
+    <!-- Tiles per row in the grid; the dock always has this many slots. The 16:9 cards are about 246dp wide
+         at 3 columns on a 1080p TV and shrink from there (about 182dp at 4, 143dp at 5, 118dp at 6).
+         This is the value used when the owner picks 3 in Settings, or as the base for a theme override.
+         With no on-TV choice, Config.load picks 3..6 automatically from the number of installed apps:
+         a small library keeps big cards, a larger one gets more columns so it fits on one screen. -->
+    <integer name="columns">3</integer>
 
     <!-- Basic motion is on; advanced effects are opt-in in the launcher's own Settings screen. -->
     <bool name="animations">true</bool>
@@ -401,8 +423,10 @@
          Off by default because the chooser is also available from launcher settings. -->
     <bool name="show_home_settings_shortcut">false</bool>
 
-    <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json. -->
-    <bool name="app_library">false</bool>
+    <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json.
+         On by default here: 「全部应用」is the only page that lists every app on the TV, system apps included, and
+         the top-bar library button is its way in (library_button). Home's own tiles are unchanged. -->
+    <bool name="app_library">true</bool>
     <!-- Every app tile is its icon on a card tinted from that icon, name only under the focused tile,
          instead of each app's own banner. Off by default; a theme can set "uniform_tiles": true. -->
     <bool name="uniform_tiles">false</bool>
@@ -459,15 +483,16 @@
     <string name="game_day" translatable="false"></string>
 
     <!-- Time-of-day backdrop behind everything: a dark gradient that follows the clock, with a warm
-         horizon glow around sunrise and sunset. 0 keeps the plain background (the default); 1 to 100
-         sets its opacity. Around 60 reads clearly without hiding a wallpaper. Can also be set with
+         horizon glow around sunrise and sunset. Also the base of the weather wallpaper: the sky is
+         tinted by today's condition (cloud/rain/snow/fog) and switches day/night by itself. 0 keeps the
+         plain background; 1 to 100 sets its opacity. 100 makes it the wallpaper. Can also be set with
          "sky_intensity": 60 in a theme's config.json. -->
-    <integer name="sky_intensity">0</integer>
+    <integer name="sky_intensity">100</integer>
     <!-- Where the TV is, in decimal degrees, so the sky's sunrise and sunset glows follow the real sun
          (computed on the TV, no network). Empty: a fixed temperate day, sunset glow around 19:00.
-         Vilnius: 54.69 and 25.28. -->
-    <string name="latitude" translatable="false"></string>
-    <string name="longitude" translatable="false"></string>
+         Vilnius: 54.69 and 25.28. Beijing: 39.9042 and 116.4074 (matches the default weather city). -->
+    <string name="latitude" translatable="false">39.9042</string>
+    <string name="longitude" translatable="false">116.4074</string>
 
     <!-- Cinematic top shelf: the focused dock app's artwork, softened, fills the top of the screen in its
          colour; the shelf gets a larger name, a "Last opened" line (from the apps Home opened) and dock position
