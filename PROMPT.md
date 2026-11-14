@@ -29,6 +29,15 @@ and `ipconfig /flushdns`. The interface alias is the name `Get-NetAdapter` shows
 usually "以太网" on a Chinese Windows). Do not change the DNS without asking, and tell me how to undo
 it afterwards: `Set-DnsClientServerAddress -InterfaceAlias "WLAN" -ResetServerAddresses`.
 
+This fork's repo also ships three ready-to-install APKs under `releases/`: `tvhome-3.3-debug.apk`
+(com.gathin.tvhome, the launcher), `fongmi-tv-5.8.7.apk` (com.fongmi.android.tv, the video app that
+Down from the last Home row opens) and `tvhome-hijack-1.0.apk` (com.jim.tvhomehijack, the boot guard).
+They live in this fork (https://github.com/jim-6688/jianjietv.git), not in the upstream clone above:
+if `releases/` is missing, clone that repo instead. Install all three together in the launcher pass
+over ADB, before disabling the stock launcher: without the video app the Down shortcut has nowhere to
+go, and on China-market sets the boot guard is what brings Home back after a cold boot. Confirm each
+with `pm list packages` and keep the stock launcher enabled until all three are in place.
+
 Connect
 - Find the TV on my network (hostname, ARP table, or ask me for the IP) and connect over ADB on port 5555.
   If the TV is in another home, I'll give you its Tailscale address instead (docs/REMOTE.md): use that,
