@@ -1,27 +1,33 @@
 <p align="center">
-  <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
+  <img src="docs/banner-jianjietv.png" alt="简洁TV / JianJie TV — 让电视桌面回归简洁" width="800">
 </p>
 
 <p align="center">
   Read in: <a href="README.zh-CN.md">简体中文</a> · <a href="README.zh-TW.md">正體中文</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a> · <a href="README.it.md">Italiano</a> · <a href="README.nl.md">Nederlands</a> · <a href="README.de.md">Deutsch</a> · <a href="README.uk.md">Українська</a> · <a href="README.tr.md">Türkçe</a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/Gathin23/cleanyourtv/stargazers"><img src="https://img.shields.io/github/stars/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Stars"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/pulls?q=is%3Amerged"><img src="https://img.shields.io/github/issues-search?query=repo%3AGathin23%2Fcleanyourtv%20is%3Apr%20is%3Amerged&style=flat&cacheSeconds=1800&label=merged%20PRs&color=cfffcf&labelColor=15181e" alt="Merged PRs"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/network/members"><img src="https://img.shields.io/github/forks/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Forks"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/graphs/contributors"><img src="https://img.shields.io/github/contributors/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Contributors"></a>
-  <a href="https://buymeacoffee.com/gathint"><img src="https://img.shields.io/badge/support-%E2%9D%A4-ff5e8a?style=flat&labelColor=15181e" alt="Support, buy me a coffee"></a>
-  <a href="https://www.producthunt.com/products/cleanyourtv"><img src="https://img.shields.io/badge/Product%20Hunt-upvote%20%E2%96%B2-da552f?style=flat&logo=producthunt&logoColor=white&labelColor=15181e" alt="CleanYourTV on Product Hunt"></a>
-</p>
+# 简洁TV / JianJie TV
 
-<p align="center">
-  <a href="https://trendshift.io/repositories/310225"><img src="docs/trending-badge.png" alt="#1 trending repo of the week, Oct 19–25 2026, via trendshift.io" width="360"></a>
-</p>
+A clean home screen and a **reversible debloat toolkit for Chinese Android TV sets** — Skyworth/Coocaa,
+Changhong, Konka, Dangbei, Whaley and other domestic firmware, as well as standard Android TV and Google TV.
+Over the LAN it disables preinstalled ads, telemetry and recommendation rows, then installs a native
+launcher with no content feed. **No root, no cable, nothing uninstalled**; every step can be undone with
+the restore script.
 
-<p align="center">
-  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="407 TV models · 106 brands · 31 languages · 572 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 396 more: 412 articles from 54 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
-</p>
+This fork keeps the upstream tools, tested model lists and translations, and adds:
+
+| Added in this fork | What it does |
+|---|---|
+| **Looping video wallpapers** | A few seconds of silent Aerial footage streamed from Apple's CDN (media3 ExoPlayer), with a built-in manifest; switch back to stills at any time |
+| **Still wallpapers** | Apple macOS stills by default, 360 wallpapers as fallback; timed / shuffled / sequential rotation with a download cache |
+| **Wallpaper favourites** | A ★ button on the home screen saves the current wallpaper; pin any favourite, or rotate favourites only, from Settings |
+| **Home screen** | Liquid-glass Dock, adjustable radius and padding, always-visible app names, weather and clock cards |
+| **Phone companion app** | Push the TV APK from an Android phone with package / versionCode / signature checks before install, plus an ADB connection self-test |
+| **Domestic firmware boot guard** | Persistent default Home, a Home-key accessibility helper and a reversible fix for Coocaa's full-screen AOD overlay, so a cold boot lands on this launcher |
+| **Device notes** | Tested recipes for Skyworth 9TA01_S81P and other domestic sets in [docs/devices/](docs/devices/) and [examples/](examples/) |
+
+Based on [CleanYourTV](https://github.com/Gathin23/cleanyourtv) (MIT, see [LICENSE](LICENSE)). The guides
+below still link to the upstream project where the tools and model lists come from.
 
 ## Start here
 
@@ -206,6 +212,9 @@ tools/theme.sh themes/aurora                                 # push a theme; --r
 | [`tools/screendiff.py`](tools/screendiff.py) | Compares a before and an after screenshot pixel by pixel, leaving out the clock or anything you mask, and writes the pair with your Wi-Fi name blurred. Optional, like the trace tools. [Guide](tools/screendiff.md). |
 | [`tools/race_calendar.py`](tools/race_calendar.py) | Writes this season's F1 calendar into a theme for race-weekend mode, from the free Jolpica API. |
 | [`launcher/build-and-install.sh`](launcher/build-and-install.sh) | Builds a shrunk release (about 572 KB), installs it, switches Home, and rolls back if Home does not land on it. |
+| [`tools/guard.py`](tools/guard.py) | Re-applies a debloat list after an OTA or a factory-style reset re-enables packages; inherits the core-package and Home guards from `disable.sh`. [Guide](docs/devices/zh-cn-domestic-android-tv.md). |
+| [`tools/make_brand_assets.py`](tools/make_brand_assets.py) | Draws the launcher icons, the Android TV banner and the README hero from one palette (needs Pillow). |
+| [`tools/weather_city.py`](tools/weather_city.py) | Offline lookup of a 中国天气网 city id from `tools/city_codes.json`, for the photo screensaver. |
 
 The scripts never leave the TV without a Home app: they only disable a stock launcher they recognise,
 and skip the Home app in a list until another launcher answers HOME. Your own lists can live outside

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-label="简洁TV — 让电视桌面回归简洁">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1a1a1a"/>
+      <stop offset="1" stop-color="#2a2723"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c9a96e"/>
+      <stop offset="1" stop-color="#e6d3a6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" fill="url(#bg)"/>
+
+  <g fill="none" stroke="url(#gold)" stroke-width="6">
+    <rect x="90" y="58" width="300" height="182" rx="18"/>
+  </g>
+  <rect x="106" y="74" width="268" height="150" rx="8" fill="#20242a"/>
+  <g fill="url(#gold)" opacity="0.85">
+    <rect x="126" y="180" width="34" height="34" rx="9"/>
+    <rect x="172" y="180" width="34" height="34" rx="9" opacity="0.7"/>
+    <rect x="218" y="180" width="34" height="34" rx="9" opacity="0.55"/>
+    <rect x="264" y="180" width="34" height="34" rx="9" opacity="0.4"/>
+  </g>
+  <rect x="126" y="100" width="120" height="10" rx="5" fill="#c9a96e" opacity="0.65"/>
+  <rect x="126" y="122" width="188" height="7" rx="3.5" fill="#8e8a82" opacity="0.55"/>
+  <rect x="126" y="140" width="150" height="7" rx="3.5" fill="#8e8a82" opacity="0.35"/>
+  <rect x="222" y="240" width="36" height="20" fill="url(#gold)"/>
+  <rect x="188" y="258" width="104" height="8" rx="4" fill="url(#gold)"/>
+
+  <rect x="444" y="86" width="3" height="128" fill="url(#gold)" opacity="0.8"/>
+  <g font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif">
+    <text x="476" y="146" font-size="72" font-weight="700" fill="url(#gold)" letter-spacing="6">简洁TV</text>
+    <text x="480" y="194" font-size="27" fill="#e8e6e2" letter-spacing="4">让电视桌面回归简洁</text>
+    <text x="480" y="234" font-size="17" fill="#9a968f" font-family="Arial, Helvetica, sans-serif" letter-spacing="1.5">JianJie TV  ·  Clean launcher &amp; reversible debloat toolkit for Android TV</text>
+  </g>
+</svg>

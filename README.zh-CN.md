@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://cleanyour.tv"><img src="docs/banner.png" alt="领先桌面：让电视桌面回归简洁" width="800"></a>
+  <img src="docs/banner-jianjietv.png" alt="简洁TV / JianJie TV — 让电视桌面回归简洁" width="800">
 </p>
 
 <p align="center">
@@ -7,36 +7,43 @@
 </p>
 
 <p align="center">
-  <a href="https://cleanyour.tv">项目网站</a> ·
+  <a href="docs/devices/zh-cn-domestic-android-tv.md">国产电视适配指南</a> ·
   <a href="PROMPT.md">操作提示词</a> ·
   <a href="examples/README.md">机型清单</a> ·
+  <a href="mobile/README.md">手机版</a> ·
   <a href="SHOWCASE.md">社区作品</a>
 </p>
 
-# 领先桌面 中文使用指南
+# 简洁TV 中文使用指南
 
-通过局域网连接 Android TV 或 Google TV，停用不需要的预装应用、广告和遥测服务，并在兼容设备上安装简洁的原生桌面。无需 root、刷机或 USB 数据线；清理工具采用停用方式，不卸载系统应用，并提供恢复脚本。
+**简洁TV** 是面向国产 Android TV（创维 / 酷开、长虹、康佳、当贝、微鲸等）的干净桌面与去广告工具集：
+通过局域网停用预装广告、遥测服务和推荐位，安装一个没有信息流的原生桌面，并提供循环视频壁纸、
+壁纸收藏、手机推送安装和断电开机自动回桌面。**无需 root、不刷机、不卸载系统应用**，所有停用都能用
+恢复脚本撤销，也不需要 USB 数据线。
 
-本文介绍通用功能和使用方法。不同机型、地区和固件的应用包及限制可能不同，请先核对自己的设备。功能变化以[英文 README](README.md)为准，具体机型记录见[机型清单](examples/README.md)。
+本项目基于 [CleanYourTV](https://github.com/Gathin23/cleanyourtv)（MIT，见 [LICENSE](LICENSE)），保留上游的
+清理工具、机型清单和多语言文档。下面这些是额外做的面向国内电视的定制，均为**新增**，不改变上游原有行为。
 
-**Samsung、LG、Roku 或其他非 Android 电视？** 领先桌面 无法在这些电视上运行，但你仍可以用遥控器一步步关闭跟踪功能：[cleanyour.tv/not-android](https://cleanyour.tv/not-android)
+## 本仓库的定制功能
 
-![原生 Google TV 桌面与 领先桌面 桌面对比](docs/stock-vs-new-side.jpg)
-
-## 领先桌面的本地增强
-
-在原项目基础上，本仓库做了以下面向国内电视的改动（均为**新增**，不改动上游原有行为）：
-
-| 增强 | 说明 |
+| 定制 | 说明 |
 |---|---|
-| **国产适配指南** | [docs/devices/zh-cn-domestic-android-tv.md](docs/devices/zh-cn-domestic-android-tv.md)：哪些国产电视是 Android（可用）、华为/荣耀智慧屏是 HarmonyOS（`pm disable-user` 不适用），以及如何在真机枚举包名。 |
-| **国产机型清单** | 新增 `examples/zh-cn-generic-android-tv/`（通用安全基线）以及 `changhong` / `konka` / `dangbei` / `whaley` 四个此前空白的品牌起始清单。 |
-| **守护脚本** | [`tools/guard.py`](tools/guard.py)：定期巡检被停用的包，若被 OTA 或系统重置重新启用则自动再停用；沿用原有「不碰核心包、不动当前 HOME」的安全闸。 |
-| **中国天气网** | 照片屏保的天气改为中国天气网（免 Key，只需城市编码），未配置时仍回退 Open-Meteo。城市码表已离线内置。 |
-| **360 壁纸** | [`addons/photo-screensaver/download_360_wallpapers.py`](addons/photo-screensaver/download_360_wallpapers.py)：从 360 壁纸抓图到本地，再由原有 `sync.sh` 推送到电视。 |
+| **循环视频壁纸** | 几秒静音循环播放（media3 ExoPlayer），内置 Aerial 清单从 Apple CDN 在线拉取；`wallpaper_video_enabled` 开关，随时切回静态图 |
+| **静态壁纸** | Apple macOS 静态图默认、360 壁纸兜底；支持定时 / 随机 / 顺序轮换，联网拉取带缓存与体积上限保护 |
+| **壁纸喜好** | 顶栏 ★ 一键收藏当前壁纸（复制持久化，不记路径）；设置里可固定某张、长按删除，或「只轮换喜好」 |
+| **桌面外观** | Dock 玻璃质感与透明度、圆角 / 间距可调、常显应用名；天气卡片、时钟屏保、模块卡片 |
+| **影视与网络信息** | 影视聚合与来源切换、海报加载、网络与运营商信息展示 |
+| **手机版** | 从手机推送安装电视 APK，推送前校验包名 / 内部版本号 / 签名 SHA-256，附带 ADB 5555 连接自检 |
+| **国产固件开机接管** | 持久默认 Home + 主页键守护服务 + 可逆关闭酷开 AOD 全屏悬浮窗；安装脚本 `DOMESTIC_TV=1` / `-DomesticTv` 一键固化 |
+| **设备笔记** | [创维 9TA01_S81P 冷启动修复](docs/devices/skyworth-9ta01-s81p.md)、[国产 Android TV 适配指南](docs/devices/zh-cn-domestic-android-tv.md) |
+| **国产机型清单** | `examples/` 下新增长虹 / 康佳 / 当贝 / 微鲸 / 通用起始清单 |
+| **守护脚本** | [`tools/guard.py`](tools/guard.py)：定期巡检，把被 OTA 重新启用的包再停用，沿用核心包与 HOME 安全闸 |
+| **中国天气网 / 360 壁纸** | 照片屏保天气改中国天气网（免 Key、离线城市码表），未配置时回退 Open-Meteo；[`download_360_wallpapers.py`](addons/photo-screensaver/download_360_wallpapers.py) 抓图后由 `sync.sh` 推送 |
 
-国产品牌机型清单尚未覆盖全部机型：起始清单里标注为「候选」的包名需要先用 `pm list packages` 在真机核对，
+国产品牌机型清单尚未覆盖全部机型：标注为「候选」的包名需先用 `pm list packages` 在真机核对，
 再取消注释转为实测记录。详见[贡献指南](CONTRIBUTING.md)。
+
+![原生 Google TV 桌面与简洁TV 桌面对比](docs/stock-vs-new-side.jpg)
 
 ## 工作原理
 
@@ -55,7 +62,7 @@
 | 步骤 | 操作 |
 |---|---|
 | 1. 电视端 | 打开「设置 → 设备偏好设置 → 关于」，在「版本号 / Build」上连续按七次确定，返回后进入开发者选项，开启 USB 调试。如果另有网络调试或 ADB 调试开关，也需要开启。菜单名称因机型而异。 |
-| 2. 电脑端 | 先克隆仓库并在助手中打开该文件夹（`git clone https://gitee.com/jinghe-net/wuai-tv-home`），再将 [`PROMPT.md`](PROMPT.md) 的内容交给助手，填写电视型号。 |
+| 2. 电脑端 | 先克隆本仓库并在助手中打开该文件夹（`git clone https://github.com/jim-6688/jianjietv.git`），再将 [`PROMPT.md`](PROMPT.md) 的内容交给助手，填写电视型号。清理工具与机型清单来自上游 <https://github.com/Gathin23/cleanyourtv>。 |
 | 3. 确认需求 | 在电视上接受调试授权，告诉助手常用应用、底部快捷栏中的应用，以及是否保留语音助手、Chromecast 和系统更新。 |
 | 4. 检查结果 | 按提示完成备份、清理和安装，检查应用启动、遥控器操作、输入源和恢复路径。 |
 
