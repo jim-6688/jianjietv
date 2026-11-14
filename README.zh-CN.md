@@ -68,6 +68,15 @@
 
 先克隆仓库的意义在于：助手会直接使用本仓库的 `tools/disable.sh` 和 `launcher/build-and-install.sh`，不会另写一套；备份、默认桌面保护和恢复记录都在其中。
 
+> **国内网络拉取 GitHub**：若 `git clone` 报 `Could not resolve host: github.com`（境外域名常被 DNS 污染），先在**管理员权限的 PowerShell** 里换用国内公共 DNS、刷新缓存，再重新拉取：
+>
+> ```powershell
+> Set-DnsClientServerAddress -InterfaceAlias "WLAN" -ServerAddresses 223.5.5.5,119.29.29.29
+> ipconfig /flushdns
+> ```
+>
+> 网卡名以 `Get-NetAdapter` 显示为准（有线一般是「以太网」）。用完可恢复自动获取：`Set-DnsClientServerAddress -InterfaceAlias "WLAN" -ResetServerAddresses`。
+
 ## 桌面功能
 
 - **简洁首页**：深色背景，默认四个常用应用组成底部快捷栏。

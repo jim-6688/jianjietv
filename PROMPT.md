@@ -22,6 +22,12 @@ Where these steps name a file under `tools/`, `docs/` or `examples/` that is not
 folder, you are running without this repo: clone it first with
 `git clone https://github.com/Gathin23/cleanyourtv` and work from there, so `tools/disable.sh` and the
 rest keep their safety checks, rather than stopping or writing your own.
+If that clone fails with "Could not resolve host: github.com" on a Windows PC in mainland China, the
+DNS resolver is the problem: ask me to run these two lines in an Administrator PowerShell, then retry
+the clone — `Set-DnsClientServerAddress -InterfaceAlias "WLAN" -ServerAddresses 223.5.5.5,119.29.29.29`
+and `ipconfig /flushdns`. The interface alias is the name `Get-NetAdapter` shows (a wired adapter is
+usually "以太网" on a Chinese Windows). Do not change the DNS without asking, and tell me how to undo
+it afterwards: `Set-DnsClientServerAddress -InterfaceAlias "WLAN" -ResetServerAddresses`.
 
 Connect
 - Find the TV on my network (hostname, ARP table, or ask me for the IP) and connect over ADB on port 5555.
