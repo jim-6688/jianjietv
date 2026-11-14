@@ -119,9 +119,17 @@ final class RemoteKeys {
      * runs, since the flag is also declared in the manifest metadata.
      */
     static void applyKeyFilter(AccessibilityService service, boolean keyFilter) {
+        applyKeyFilter(service, keyFilter, true);
+    }
+
+    /** The second pass exists because right after the bind the framework may not hand the info out yet. */
+    private static void applyKeyFilter(AccessibilityService service, boolean keyFilter, boolean retry) {
         if (keyFilter) return;
         AccessibilityServiceInfo info = service.getServiceInfo();
-        if (info == null) return;
+        if (info == null) {
+            if (retry) new Handler(Looper.getMainLooper()).post(() -> applyKeyFilter(service, false, false));
+            return;
+        }
         info.flags &= ~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
         service.setServiceInfo(info);
     }

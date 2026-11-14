@@ -194,7 +194,6 @@ public class HomeKeyService extends AccessibilityService {
         consumeVolumeKeys = config.consumeVolumeKeys;
         appKeys = RemoteKeys.parseAppKeys(config.appKeys);
         appScancodes = RemoteKeys.parseAppScancodes(config.appKeys);
-        RemoteKeys.applyKeyFilter(this, config.keyFilter);
         homeLongPressHome = config.homeLongPressHome;
         frontAppKeys = RemoteKeys.parseFrontAppKeys(config.appKeys);
         frontAppScancodes = RemoteKeys.parseFrontAppScancodes(config.appKeys);
@@ -227,6 +226,9 @@ public class HomeKeyService extends AccessibilityService {
             info.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
             setServiceInfo(info);
         }
+        // After that setServiceInfo, not before: the info written back above still carries the xml's
+        // flagRequestFilterKeyEvents, so clearing the flag earlier only had it restored on the same pass.
+        RemoteKeys.applyKeyFilter(this, config.keyFilter);
         if (!stockHome.isEmpty() || !powerOnLiveTv.isEmpty()) probeAtBoot();
         armStandbyExit();
         holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);

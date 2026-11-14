@@ -103,6 +103,46 @@ adb shell 'appops write-settings'
 `power_on_home_always` 遇到「用户先按键」会让位，多按一下就无法判定是不是桌面自己拉起的；
 开机后等 20–30 秒再连 ADB，检查时不要 `am start`。
 
+## 音量键「自己跑到 0 / 100」：固件长按加速，不是守护程序
+
+用户报「加音量自动拉到 100，减音量自动拉到 0」。测量结论：**全部是酷开固件 `com.tianci.system`
+自己的按键重复 + 长按加速**，与 launcher、`com.jim.tvhomehijack` 无关。
+
+取证方法（shell 已在 `input` 组，`/dev/input/event7` 可写，不需要 root）：
+
+```bash
+# 按住 3 秒，每秒读一次
+adb shell 'media volume --stream 3 --set 60; sendevent /dev/input/event7 1 114 1; sendevent /dev/input/event7 0 0 0;
+           sleep 1; settings get system volume_music_speaker;
+           sleep 1; settings get system volume_music_speaker;
+           sleep 1; settings get system volume_music_speaker;
+           sendevent /dev/input/event7 1 114 0; sendevent /dev/input/event7 0 0 0'
+```
+
+| 操作 | 结果 | 折算 |
+| --- | --- | --- |
+| 单击 50 ms | 11 → 10 | 1 格 |
+| 按住 0.6 s | 11 → 4 | 约 12 格/秒 |
+| 按住 3 s，每秒采样 | 60 → 48 → 23 → 0 | 第 1 秒 12 格，第 2 秒 25 格：**1 秒后开始加速** |
+| 松开后 2 s、5 s | 数值不再变化 | 松手即停，没有卡键 |
+| 把 `HomeKeyService` 整个从无障碍列表移除后重测 | 与上面完全一致 | 我们的服务不参与 |
+| 把 `consume_volume_keys` 设成 true 后重测 | 60 → 2（1.2 s） | **更糟**：固件照样执行，我们的重复是叠加的 |
+
+要点：
+
+- `dumpsys audio` 的 `volume changes` 里每一笔都是 `from com.tianci.system`，没有一笔来自 `com.gathin.tvhome`。
+- `ro.config.media_vol_steps=100`（普通 Android TV 是 15~30 格），配合加速，长按 4 秒就能横穿整个量程，
+  观感就是「一按冲到底」。
+- 这台机器**不要**开 `consume_volume_keys`：固件在无障碍过滤之前就已经处理过一次音量键，吞掉按键只会让
+  我们自己的步进叠加在固件步进上（实测 1.2 秒从 60 掉到 2）。
+- 另一个独立发现：`config.json` 里 `key_filter: false` 在这台固件上**不生效**——重绑服务后 `dumpsys
+  accessibility` 里 `主页键` 仍是 `capabilities=8`（`FLAG_REQUEST_FILTER_KEY_EVENTS`），
+  `setServiceInfo` 清掉的标志被系统又装回去了。它不影响音量结论（服务整个停掉行为不变），
+  但想彻底不参与按键过滤只能不启用该服务。
+- 无解的部分：加速逻辑在固件内部，没有用户可关的开关（`SkySystemService.apk` 里只有 `key action
+  accelerate`、`downRepeatCount` 这类代码，以及酒店模式的 `setHotelMaxmunVolume` 限幅）。
+  实际建议是短按（一次一格）而不是按住。
+
 ## 恢复与已知代价
 
 - 代价：酷开的**息屏显示（AOD）不再出现**。恢复（恢复后开机可能又变黑屏）：
