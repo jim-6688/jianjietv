@@ -65,7 +65,7 @@ grep -i whaley   tv_packages.txt
 
 ```bash
 TV_HOST=<IP> tools/disable.sh examples/zh-cn-generic-android-tv/debloat.txt   # 停用
-TV_HOST=<IP> tools/guard.py   examples/zh-cn-generic-android-tv/debloat.txt   # 守护(防 OTA 回启)
+TV_HOST=<IP> tools/venv/bin/python -I tools/guard.py   examples/zh-cn-generic-android-tv/debloat.txt   # 守护(防 OTA 回启)
 TV_HOST=<IP> tools/restore.sh examples/zh-cn-generic-android-tv/debloat.txt   # 还原
 ```
 
@@ -77,11 +77,11 @@ TV_HOST=<IP> tools/restore.sh examples/zh-cn-generic-android-tv/debloat.txt   # 
 
 ```bash
 # 单次巡检
-TV_HOST=<IP> tools/guard.py examples/zh-cn-generic-android-tv/debloat.txt
+TV_HOST=<IP> tools/venv/bin/python -I tools/guard.py examples/zh-cn-generic-android-tv/debloat.txt
 # 每小时守护一次（建议用 nohup / 任务计划长期运行）
-TV_HOST=<IP> tools/guard.py --loop --interval 3600 examples/zh-cn-generic-android-tv/debloat.txt
+TV_HOST=<IP> tools/venv/bin/python -I tools/guard.py --loop --interval 3600 examples/zh-cn-generic-android-tv/debloat.txt
 # 只报告不改动
-TV_HOST=<IP> tools/guard.py --dry-run examples/zh-cn-generic-android-tv/debloat.txt
+TV_HOST=<IP> tools/venv/bin/python -I tools/guard.py --dry-run examples/zh-cn-generic-android-tv/debloat.txt
 ```
 
 ## 6. 资源改国内（插件层面）
