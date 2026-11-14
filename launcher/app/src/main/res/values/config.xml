@@ -387,14 +387,6 @@
          {"images":[{"url":...}]} manifest URL. -->
     <bool name="wallpaper_stills_enabled">true</bool>
     <string name="wallpaper_stills_manifest" translatable="false">apple</string>
-    <!-- Put every launchable app on Home, not only the ones that declare a TV (LEANBACK_LAUNCHER) entry
-         (config.xml home_all_apps, or a theme's config.json). Off by default: on a TV with a leanback entry
-         per app it only adds phone apps. On firmware such as Skyworth's only a handful declare one (the app
-         store among them) while the settings page, the media player and the rest declare a plain LAUNCHER
-         entry, so the dock could only be filled from that handful. Apps added this way still launch with the
-         plain MAIN intent, names come from the package, hidden_apps still wins and "remove from Home" in the
-         app library still removes one. -->
-    <bool name="home_all_apps">false</bool>
     <!-- Rotating wallpapers grouped by the time of day, as JSON: {"morning": [file names], "evening": [...],
          "night": [...]}. While set, the rotation picks only from the group that fits now: morning from sunrise to
          noon, evening until half an hour after sunset, night the rest, with the sun at latitude and longitude (07:00

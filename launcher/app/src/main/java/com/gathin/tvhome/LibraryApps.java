@@ -102,16 +102,6 @@ final class LibraryApps {
         return !removedFromHome && (explicitlyAdded || (tvApp && !themeHidden));
     }
 
-    /**
-     * With home_all_apps every launchable app counts as one Home shows, so an app with only a plain
-     * MAIN/LAUNCHER entry reaches the dock's "add to dock" list on firmware where a leanback entry is rare.
-     * hidden_apps still keeps one off Home, and an app added in the app library still shows past it.
-     */
-    static boolean visible(boolean tvApp, boolean themeHidden, boolean explicitlyAdded, boolean removedFromHome,
-                           boolean allApps) {
-        return !removedFromHome && (explicitlyAdded || ((tvApp || allApps) && !themeHidden));
-    }
-
     /** The pill after the last Home row: show_library_pill false hides it only while the top-bar button is a way in. */
     static boolean showPill(boolean library, boolean button, boolean pill) {
         return library && (pill || !button);

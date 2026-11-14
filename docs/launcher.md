@@ -50,7 +50,10 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
   TCL/FFALCON and Fire OS are in `settings_fallback_components` - because that app holds pages
   Android's has no row for, such as Xiaomi's Account & Security with the ADB switch.
 - **Module cards**, with `module_cards`.
-- **Edit dock**, with `dock_row`.
+- **Edit dock**, with `dock_row`. A place can also be filled straight from the app library: hold OK on
+  a card there and choose **Add to dock**. That matters on firmware where only a handful of apps declare
+  a TV entry, since Home lists only those and the settings page or the media player would otherwise have
+  no tile to pick.
 - **Reorder apps**: OK picks an app up, the arrows move it, Back places it, and Back again finishes.
   With `tile_menu` (on by default since 3.3), holding OK on a tile offers **Move**, which picks that app up straight away.
 - **Restart…** while `HomeKeyService` runs, which opens the system power menu (a launcher may not

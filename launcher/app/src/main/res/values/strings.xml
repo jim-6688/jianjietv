@@ -147,6 +147,7 @@
     <string name="library_empty">No launchable apps found</string>
     <string name="library_on_home">On Home</string>
     <string name="library_add_home">Add to Home</string>
+    <string name="library_add_dock">Add to dock</string>
     <string name="library_remove_shortcut">Remove from Home</string>
     <string name="library_open">Open</string>
     <string name="library_app_info">App info</string>

@@ -179,13 +179,23 @@ adb shell 'cmd package query-activities --brief -a android.intent.action.MAIN -c
 adb shell 'cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER'
 ```
 
-写 `"home_all_apps": true` 到 `config.json`（或 `config.xml` 的 `home_all_apps`）后，桌面列出全部可启动应用，
-长按卡片即为「添加到程序坞 / 移动 / 从主屏幕移除」。这些卡片用普通 `MAIN` 启动，不像 TV 应用那样带
-leanback 分类；实测 `com.coocaa.os.softsettings`（设置）、`com.tianci.localmedia`（媒体播放器）、
+最初的修法是加一个 `home_all_apps` 开关：写 `"home_all_apps": true` 到 `config.json`（或 `config.xml` 的同名项）
+之后，桌面列出全部可启动应用，长按卡片即为「添加到程序坞 / 移动 / 从主屏幕移除」。这些卡片用普通 `MAIN` 启动，
+不像 TV 应用那样带 leanback 分类；实测 `com.coocaa.os.softsettings`（设置）、`com.tianci.localmedia`（媒体播放器）、
 `com.coocaa.tvmanager`（电视管家）用 `am start -a android.intent.action.MAIN -n <组件>` 都能正常打开。
 
 全开也把固件里的后台服务摆上了桌面（`CooDataServer`、`SkyAOD`、`tvhome 接管` 之类），不影响使用，
 嫌乱就长按卡片「从主屏幕移除」，或用 `hidden_apps` 一次排掉。
+
+### 后来的做法：不进桌面，直接从应用库放程序坞
+
+`home_all_apps` 把二十多个系统应用一起摊到桌面上，太乱，所以这个开关**已删除**。现在走应用库：
+应用库的目录本来就枚举全部已安装包（两套入口都查，还兜了没有入口的记录），长按任意一张卡片多出
+「添加到程序坞」这一行；选中后先给它补一张桌面卡片（写 `library_apps.txt`），再进入程序坞选位模式，
+按确定替换掉那一格，被换下来的应用落到这张新卡原来的位置。
+
+程序坞本身没有独立数据：它就是桌面前 `COLUMNS` 个格子（`AppAdapter` 的 `dockFilled()` + `order.txt` 的
+`docked`），所以“进程序坞”必须先有桌面卡片，这也是之前只能从桌面上已有卡片里挑的原因。
 
 ## 恢复与已知代价
 

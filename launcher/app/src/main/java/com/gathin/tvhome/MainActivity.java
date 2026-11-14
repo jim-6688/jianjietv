@@ -2022,6 +2022,35 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    /** Whether this package already holds one of the dock places (the first COLUMNS tiles). */
+    private boolean inDock(String pkg) {
+        int pos = adapter.positionOf(adapter.keyForPackage(pkg));
+        return pos >= 0 && pos < Math.min(COLUMNS, adapter.movableCount());
+    }
+
+    /**
+     * App library "Add to dock". Home only lists apps with a TV entry, so a settings page or the media player has no
+     * tile to swap in from the tile menu; the library adds one first, then the dock asks which place to replace,
+     * exactly as the tile menu's Add to dock does.
+     */
+    private void addToDockFromLibrary(ResolveInfo app) {
+        if (app == null || app.activityInfo == null) return;
+        String pkg = app.activityInfo.packageName;
+        if (pkg == null) return;
+        if (!LibraryApps.save(this, pkg, true)) {
+            Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
+            return;
+        }
+        reloadApps(false);   // the new tile has to exist before a place can hold it
+        String key = adapter.keyForPackage(pkg);
+        if (key == null) {
+            Toast.makeText(this, getString(R.string.cant_open,
+                    String.valueOf(app.loadLabel(getPackageManager()))), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        startDockEditFor(key, false);
+    }
+
     /** Puts the app at pos into dock place slot, and the app that was there where the chosen one was; then saves. */
     private void swapIntoDock(int slot, int pos) {
         String slotKey = adapter.keyAt(slot);
@@ -2187,7 +2216,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         libraryFocusPending = false;
         libraryFromTopBar = false;
         libraryFromVpnPill = false;
-        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, appLibrarySelection, libraryOkOpens, adapter::containsPackage, () -> reloadApps(false), () -> {
+        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, appLibrarySelection, libraryOkOpens, adapter::containsPackage,
+                new AppLibraryDialog.DockAction() {
+                    @Override public boolean offers(String pkg) {
+                        return dockRow && !inDock(pkg);
+                    }
+
+                    @Override public void add(ResolveInfo app) {
+                        addToDockFromLibrary(app);
+                    }
+                }, () -> reloadApps(false), () -> {
             appLibrary = null;
             openPopup = null;
             if (libraryFromTopBar) {

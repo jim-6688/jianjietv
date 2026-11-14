@@ -80,6 +80,8 @@ final class AppLibraryDialog {
     private final LibraryLoads loads = new LibraryLoads();
     private final Activity activity;
     private final Predicate<String> onHome;
+    /** Home's "put this catalogue app in the dock" hook; null when the dock is not a separate row. */
+    private final DockAction dockAction;
     private final Runnable changed;
     private final LinearLayout panel;
     private final boolean reducedMotion;
@@ -151,7 +153,20 @@ final class AppLibraryDialog {
      *  setups are unaffected. See LibraryApps.excludedFromCatalog(). */
     private final Set<String> excludedApps;
 
-    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, boolean okOpens, Predicate<String> onHome, Runnable changed, Runnable dismissed, Set<String> excludedApps) {
+    /**
+     * Home's side of "Add to dock": an app that has no tile yet cannot be swapped in from the tile menu, so the
+     * catalogue offers the dock place instead. The catalogue is also the only place the settings page and the other
+     * plain-entry apps appear, since Home keeps its grid to the apps with a TV entry.
+     */
+    interface DockAction {
+        /** Whether to offer the row for this package: false once it already sits in a dock place. */
+        boolean offers(String pkg);
+
+        /** Called on the UI thread after the library has closed; Home then asks which place to replace. */
+        void add(ResolveInfo app);
+    }
+
+    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, boolean okOpens, Predicate<String> onHome, DockAction dockAction, Runnable changed, Runnable dismissed, Set<String> excludedApps) {
         this.activity = activity;
         this.animations = animations;
         this.rtl = activity.getResources().getBoolean(R.bool.rtl_app_grid);
@@ -159,6 +174,7 @@ final class AppLibraryDialog {
         this.selectionMode = selectionMode;
         this.okOpens = okOpens && !selectionMode;
         this.onHome = onHome;
+        this.dockAction = dockAction;
         this.changed = changed;
         this.dismissed = dismissed;
         this.excludedApps = excludedApps;
@@ -617,6 +633,13 @@ final class AppLibraryDialog {
         if (entry) {
             addAction(rows, home ? R.string.library_remove_shortcut : R.string.library_add_home,
                     () -> changeHome(app, !home));
+        }
+        // 程序坞只能从桌面上的卡片挪，所以没有卡片的系统应用从这里放进去；已在程序坞里的不再重复提供。
+        if (entry && dockAction != null && dockAction.offers(pkg)) {
+            addAction(rows, R.string.library_add_dock, () -> {
+                close();
+                dockAction.add(app);
+            });
         }
         Intent info = SystemSettings.appInfo(activity, pkg);
         if (info != null) addAction(rows, R.string.library_app_info, () -> {
