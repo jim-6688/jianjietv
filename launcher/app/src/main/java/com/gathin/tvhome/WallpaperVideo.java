@@ -110,17 +110,29 @@ final class WallpaperVideo {
             for (int i = 0; i < videos.length(); i++) {
                 Object item = videos.opt(i);
                 if (item instanceof String) {
-                    if (!((String) item).trim().isEmpty()) urls.add(((String) item).trim());
+                    String url = ((String) item).trim();
+                    if (!url.isEmpty()) urls.add(playable(url));
                     continue;
                 }
                 JSONObject v = videos.optJSONObject(i);
                 if (v == null) continue;
                 String url = v.optString("url", "").trim();
                 if (url.isEmpty()) url = v.optString("src", "").trim();
-                if (!url.isEmpty()) urls.add(url);
+                if (!url.isEmpty()) urls.add(playable(url));
             }
         }
         return urls;
+    }
+
+    /**
+     * Apple's Aerial clips are public files on sylvan.apple.com, but that host's edges answer on port 80 and drop the
+     * TLS handshake on 443 from mainland China (checked: http 206, https no connection, while other https hosts are
+     * fine). The same file is served either way, so the bundled manifest is played over http. Any other host, and any
+     * https URL a reader puts in their own manifest, keeps the scheme it was given.
+     */
+    static String playable(String url) {
+        String apple = "https://sylvan.apple.com/";
+        return url.startsWith(apple) ? "http://" + url.substring("https://".length()) : url;
     }
 
     private WallpaperVideo() { }

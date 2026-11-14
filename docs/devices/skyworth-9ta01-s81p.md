@@ -143,6 +143,28 @@ adb shell 'media volume --stream 3 --set 60; sendevent /dev/input/event7 1 114 1
   accelerate`、`downRepeatCount` 这类代码，以及酒店模式的 `setHotelMaxmunVolume` 限幅）。
   实际建议是短按（一次一格）而不是按住。
 
+## 视频壁纸（Apple Aerial）在这台机上的三个坑
+
+视频壁纸**没有界面开关**，只能写 `config.json`：`"wallpaper_video_enabled": true`（内置 28 段 Apple Aerial，
+`wallpaper_video_manifest` 默认 `aerial`；也可以填自己的 `{"videos":[{"url":"..."}]}` 清单 URL 或 assets 文件名）。
+开了之后桌面纯色、不出画，是三个独立问题叠在一起：
+
+| 现象 | 原因 | 修法 |
+| --- | --- | --- |
+| 一开就闪退，`RuntimeException: UnsupportedOperationException: TextureView doesn't support displaying a background drawable` | `setupVideoLayer` 给 `TextureView` 设了背景色，它不允许 | 背景色留在 root 上 |
+| 不闪退了，但背景是纯色，`logcat` 里只有 `video layer up: 28 clips`，没有 `video size` | 自己的 `setSurfaceTextureListener` **覆盖**了 `setVideoTextureView` 装上的那个，播放器收不到纹理可用通知，一直 `state=2` 缓冲，`surface=false` | 保留播放器的监听器，把 `applyCrop` 串在它前面调用 |
+| 出画后又黑屏/回退静态 | 内置清单是 `https://sylvan.apple.com/...`，这个域名在国内只有 80 端口可用：`http` 返回 `206`，`https` 连不上（同期 `apple.com`、`gitee.com` 的 443 都正常） | `WallpaperVideo.playable` 把 sylvan 的 https 换成 http，其他域名原样保留 |
+
+验证（`screen 1920x1080`、`video size 1920x1080` 出现在 `logcat`，`dumpsys gfxinfo com.gathin.tvhome` 的
+`Total frames rendered` 从 24 涨到 863，隔 3 秒两张截图 md5 不同，画面是 Aerial 的地球夜景）。
+
+另外两个容易误会的点：
+
+- 设置里那行 **“360 壁纸（live）”的 live 指在线拉图，不是动态视频**，开了它仍然是静态照片。
+- 只要用户收藏并选中过某张静态壁纸（`WallpaperFavorites.selected`），`Config.load` 会强制
+  `wallpaperVideoEnabled = false` —— 静态壁纸优先级高于视频壁纸，这是设计如此。要让视频壁纸生效，
+  先在设置里取消选中收藏的那一张。
+
 ## 恢复与已知代价
 
 - 代价：酷开的**息屏显示（AOD）不再出现**。恢复（恢复后开机可能又变黑屏）：

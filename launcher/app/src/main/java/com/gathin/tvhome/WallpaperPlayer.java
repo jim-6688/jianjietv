@@ -21,6 +21,7 @@ import android.graphics.SurfaceTexture;
 import android.view.TextureView;
 
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.VideoSize;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -222,11 +223,13 @@ final class WallpaperPlayer {
         recordCurrent(null);   // a streaming clip, not a still picture: nothing to favourite
         videoUrls = list;
         // TextureView instead of media3-ui's PlayerView: keeps the dependency to the already-cached
-        // media3-exoplayer and lets us paint a centerCrop transform by hand.
+        // media3-exoplayer and lets us paint a centerCrop transform by hand. It throws on any background
+        // drawable ("TextureView doesn't support displaying a background drawable"), so the plain colour
+        // stays on the root, behind it.
         videoView = new TextureView(context);
-        videoView.setBackgroundColor(backgroundColor);
         root.addView(videoView, 0, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        Log.i("TvHome.Wallpaper", "video layer up: " + list.size() + " clips, screen " + width + "x" + height);
         player = new ExoPlayer.Builder(context).build();
         player.setRepeatMode(Player.REPEAT_MODE_ONE); // loop the single clip seamlessly
         player.setVolume(0f);                         // muted background
@@ -237,15 +240,34 @@ final class WallpaperPlayer {
             public void onVideoSizeChanged(VideoSize size) {
                 lastVideoW = size.width;
                 lastVideoH = size.height;
+                Log.i("TvHome.Wallpaper", "video size " + size.width + "x" + size.height);
                 applyCrop();
             }
+
+            @Override
+            public void onPlayerError(PlaybackException error) {
+                fallBackToStills(error.getMessage());
+            }
         });
-        // The surface can become ready after the video size is known; re-apply the crop when it does.
+        // setVideoTextureView installs the player's own SurfaceTextureListener, which is how it learns the texture is
+        // up and gets a surface at all: replacing it left the player stuck buffering with no picture (state=2,
+        // surface=false, not one frame decoded). Keep that one and hang the crop off it.
+        final TextureView.SurfaceTextureListener playerListener = videoView.getSurfaceTextureListener();
         videoView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-            @Override public void onSurfaceTextureAvailable(SurfaceTexture st, int w, int h) { applyCrop(); }
-            @Override public void onSurfaceTextureSizeChanged(SurfaceTexture st, int w, int h) { applyCrop(); }
-            @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture st) { return false; }
-            @Override public void onSurfaceTextureUpdated(SurfaceTexture st) { }
+            @Override public void onSurfaceTextureAvailable(SurfaceTexture st, int w, int h) {
+                if (playerListener != null) playerListener.onSurfaceTextureAvailable(st, w, h);
+                applyCrop();
+            }
+            @Override public void onSurfaceTextureSizeChanged(SurfaceTexture st, int w, int h) {
+                if (playerListener != null) playerListener.onSurfaceTextureSizeChanged(st, w, h);
+                applyCrop();
+            }
+            @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture st) {
+                return playerListener != null && playerListener.onSurfaceTextureDestroyed(st);
+            }
+            @Override public void onSurfaceTextureUpdated(SurfaceTexture st) {
+                if (playerListener != null) playerListener.onSurfaceTextureUpdated(st);
+            }
         });
         playOne();
         return true;
@@ -261,6 +283,28 @@ final class WallpaperPlayer {
         } catch (Exception e) {
             Log.w("TvHome.Wallpaper", "video wallpaper failed to prepare " + url + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * The clip never arrives (a host that answers only on http, no route at all, a codec the box refuses): drop the
+     * layer and put the picture rotation back, instead of leaving Home on a bare background colour for good.
+     */
+    private void fallBackToStills(String why) {
+        Log.w("TvHome.Wallpaper", "video wallpaper gave up: " + why);
+        videoMode = false;
+        videoUrls = null;
+        if (player != null) {
+            player.release();
+            player = null;
+        }
+        if (videoView != null) {
+            root.removeView(videoView);
+            videoView = null;
+        }
+        if (closed || files.isEmpty() || image.getParent() != null) return;
+        root.addView(image, 0, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        showFirst();
     }
 
     /** centerCrop: scale the video to cover the screen, cropping the overflow (like Aerial on Apple TV). */
