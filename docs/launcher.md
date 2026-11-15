@@ -64,10 +64,9 @@ The launcher's own page has these rows, top to bottom:
 - **Reorder apps**, only with `launcher_settings_button`, the same as the menu's.
 - **Show IP** prints the LAN and WAN IP lines in the top bar. Off by default, when the bar shows the
   broadband ISP name (read from the public-IP echo service) and the connection type instead.
-- **Apps per row** 3, 4, 5 or 6, or **Auto**, which picks the count from the number of installed apps so
-  a small library keeps big cards and a larger one still fits on a screen; **Rows below dock** 0 to 3, how many rows of tiles stay visible under the
-  dock band; **Dock band opacity** 100%, 70%, 50% or 30%. The last two only do anything while the dock is
-  its own row (`dock_row`, on by default).
+- **App count** 3, 4, 5, 6, 7 or 8, the number of dock slots and how many apps the Home shows.
+- **Background opacity** 100%, 70%, 50% or 30%, which also sets the top bar, the weather card and this
+  drawer's own panel (`dock_opacity`; 30 when a theme names nothing).
 - **Clock**: **System** follows the TV's 12- or 24-hour setting; **12-hour** or **24-hour** sets the launcher's
   clocks (Home and the clock screensaver) to that, whatever the TV uses (`clock_format` in a theme).
 - **Wallpaper**: one picture from the theme's collection (or its `wallpaper.jpg`), **None**, or **Theme

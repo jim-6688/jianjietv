@@ -50,6 +50,11 @@ final class SettingsController {
     private final View view;
     private SharedPreferences choices;
     private final TextView[] appCountChoices = new TextView[6];
+    /** 背景透明度的四档，写入 dock_opacity（30-100）：同时作用于程序坞、顶栏、天气卡与设置抽屉。 */
+    private static final int[] DOCK_OPACITIES = {100, 70, 50, 30};
+    private final TextView[] opacityChoices = new TextView[DOCK_OPACITIES.length];
+    /** 当前生效的透明度（可能来自主题），点击同一档时不重复写预置。 */
+    private int dockOpacity;
     private LinearLayout wallpaperInline;
     private View wallpaperFavoritesChoice;
     private TextView wallpaperFavoritesText;
@@ -84,6 +89,22 @@ final class SettingsController {
                 if (dockCount[0] == value) return;
                 dockCount[0] = value;
                 choices.edit().putInt(Config.DOCK_COUNT_KEY, value).apply();
+                changed();
+                refresh();
+            });
+        }
+
+        // 背景透明度：四档写 dock_opacity。面板自身立刻跟着变，首页在抽屉关闭时统一刷新。
+        dockOpacity = config.dockOpacity;
+        int[] opacityIds = {R.id.dock100, R.id.dock70, R.id.dock50, R.id.dock30};
+        for (int i = 0; i < opacityIds.length; i++) {
+            final int value = DOCK_OPACITIES[i];
+            opacityChoices[i] = view.findViewById(opacityIds[i]);
+            opacityChoices[i].setOnClickListener(v -> {
+                if (dockOpacity == value) return;
+                dockOpacity = value;
+                choices.edit().putInt(Config.DOCK_OPACITY_KEY, value).apply();
+                UiAlpha.applyPanel(view, value);
                 changed();
                 refresh();
             });
@@ -306,7 +327,11 @@ final class SettingsController {
     }
 
     private void refresh() {
-        int dockCount = Config.load(a).dockCount;
+        Config current = Config.load(a);
+        dockOpacity = current.dockOpacity;
+        for (int i = 0; i < opacityChoices.length; i++)
+            opacityChoices[i].setSelected(dockOpacity == DOCK_OPACITIES[i]);
+        int dockCount = current.dockCount;
         for (int i = 0; i < appCountChoices.length; i++)
             appCountChoices[i].setSelected(dockCount == i + 3);
         wallpaperInterval = choices.getInt(Config.WALLPAPER_INTERVAL_KEY, 0);

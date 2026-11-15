@@ -96,6 +96,27 @@
             <TextView android:id="@+id/appCount8" style="@style/SettingsColumnChoice" android:text="8" />
         </LinearLayout>
 
+        <!-- 背景透明度：同一个 dock_opacity 也套在顶栏、天气卡和设置抽屉上，见 MainActivity.applyCardOpacity()。 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/dock_opacity_label"
+            android:textColor="#FFFFFFFF"
+            android:textSize="20sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView android:id="@+id/dock100" style="@style/SettingsColumnChoice" android:text="100%" />
+            <TextView android:id="@+id/dock70" style="@style/SettingsColumnChoice" android:text="70%" />
+            <TextView android:id="@+id/dock50" style="@style/SettingsColumnChoice" android:text="50%" />
+            <TextView android:id="@+id/dock30" style="@style/SettingsColumnChoice" android:text="30%" />
+        </LinearLayout>
+
         <!-- 壁纸设置：类型二选一 + 当前类型内容 + 轮换方式，全部内联在面板里，不再进入二级页面。 -->
         <LinearLayout
             android:id="@+id/wallpaperInline"
