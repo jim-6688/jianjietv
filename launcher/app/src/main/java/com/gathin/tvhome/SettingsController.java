@@ -178,17 +178,8 @@ final class SettingsController {
         typeRow.addView(dynamicCard);
         wallpaperInline.addView(typeRow);
 
-        // 子内容：只展示当前选中的类型
-        if (videoOn) {
-            TextView note = new TextView(c);
-            note.setText(R.string.wallpaper_dynamic_active);
-            note.setTextColor(0xFFC9A96E);
-            note.setTextSize(16);
-            note.setPadding(12, 12, 12, 12);
-            wallpaperInline.addView(note);
-        } else {
-            addStaticItems(c, wallpaperInline);
-        }
+        // 子内容：只展示当前选中的类型（动态没有可选项，顶部的选中态已经说明一切，不再加说明文字）
+        if (!videoOn) addStaticItems(c, wallpaperInline);
 
         // 两档：立即生效 / 24 小时轮换
         LinearLayout modes = new LinearLayout(c);
@@ -342,20 +333,14 @@ final class SettingsController {
         renderFavourites(favourites, clips);
     }
 
-    /** 收藏直接平铺成缩略图：静态图用画面本身，动态片用星标加片名，一眼看出是哪一张。 */
+    /** 收藏直接平铺成缩略图：静态图用画面本身，动态片用抽取的首帧；没有收藏时这一块就是空的。 */
     private void renderFavourites(List<File> stills, List<String> clips) {
         int focused = favouriteCells.indexOf(wallpaperFavoritesGrid.findFocus());
         favouriteCells.clear();
         wallpaperFavoritesGrid.removeAllViews();
 
-        if (stills.isEmpty() && clips.isEmpty()) {
-            TextView empty = new TextView(a);
-            empty.setText(R.string.wallpaper_favorites_empty);
-            empty.setTextColor(0xFFACB8C1);
-            empty.setTextSize(13);
-            wallpaperFavoritesGrid.addView(empty);
-            return;
-        }
+        // 空列表不再放提示文字：上面的「壁纸喜好：0 个」已经说清楚了。
+        if (stills.isEmpty() && clips.isEmpty()) return;
 
         String chosenStill = WallpaperFavorites.selected(a);
         String chosenClip = WallpaperFavorites.selectedVideo(a);
@@ -381,16 +366,6 @@ final class SettingsController {
         if (row != null && inRow != 0) {
             for (int i = inRow; i < COLUMNS; i++) row.addView(new View(a), cellParams());
         }
-
-        TextView hint = new TextView(a);
-        hint.setText(R.string.wallpaper_favorites_grid_hint);
-        hint.setTextColor(0xFF8FA0AD);
-        hint.setTextSize(12);
-        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hintLp.topMargin = dp(10);
-        hint.setLayoutParams(hintLp);
-        wallpaperFavoritesGrid.addView(hint);
 
         if (focused >= 0 && focused < favouriteCells.size())
             favouriteCells.get(focused).requestFocus();
@@ -455,23 +430,50 @@ final class SettingsController {
         return cell;
     }
 
-    /** 动态片没有本地画面，用星标加片名代替，仍然一眼能分出是哪一段。 */
+    /** 动态片的预览：从流里抽一帧当画面（缓存），抽不到时退回星标占位。 */
     private FrameLayout clipCell(String url, boolean chosen) {
         FrameLayout cell = cell(chosen);
-        ImageView star = new ImageView(a);
-        star.setImageResource(R.drawable.ic_star_filled);
-        cell.addView(star, new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER));
 
+        ImageView picture = new ImageView(a);
+        picture.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        picture.setTag(url);
+        FrameLayout.LayoutParams fill = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        fill.setMargins(dp(2), dp(2), dp(2), dp(2));
+        cell.addView(picture, fill);
+
+        // 帧还没到（或者抽帧失败）时中间留一颗星，至少能看出这是一段动态壁纸。
+        ImageView placeholder = new ImageView(a);
+        placeholder.setImageResource(R.drawable.ic_star_filled);
+        cell.addView(placeholder, new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER));
+
+        Bitmap ready = ClipThumbnails.cached(a, url);
+        if (ready != null) {
+            picture.setImageBitmap(ready);
+            placeholder.setVisibility(View.GONE);
+        } else {
+            ClipThumbnails.fetch(a, url, frame -> {
+                // 面板可能已经重建：只在格子还挂着同一个 URL、且仍在界面上时才贴图。
+                if (frame == null || !url.equals(picture.getTag())
+                        || !picture.isAttachedToWindow()) return;
+                picture.setImageBitmap(frame);
+                placeholder.setVisibility(View.GONE);
+            });
+        }
+
+        // 底部压一条半透明片名，几个动态收藏之间才分得清是哪一段。
         TextView name = new TextView(a);
         name.setText(WallpaperFavorites.videoLabel(url));
-        name.setTextColor(0xFFC9A96E);
-        name.setTextSize(11);
+        name.setTextColor(0xFFFFFFFF);
+        name.setTextSize(10);
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
-        name.setGravity(Gravity.CENTER);
+        name.setPadding(dp(6), dp(2), dp(6), dp(2));
+        GradientDrawable scrim = new GradientDrawable();
+        scrim.setColor(0xB3000000);
+        name.setBackground(scrim);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
-        lp.setMargins(dp(6), 0, dp(6), dp(5));
         cell.addView(name, lp);
 
         cell.setOnClickListener(v -> {

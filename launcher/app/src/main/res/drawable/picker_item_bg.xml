@@ -1,21 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 壁纸/轮换等选项按钮：默认态也有实心底色，和「应用数量」「背景透明度」那组按钮保持一致；
+     焦点态提亮，选中态是金色描边。 -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true" android:state_enabled="true">
         <shape android:shape="rectangle">
-            <solid android:color="#33FFFFFF" />
-            <corners android:radius="8dp" />
+            <solid android:color="#55333C46" />
+            <corners android:radius="14dp" />
+            <stroke android:width="2dp" android:color="#FFB9E7C7" />
         </shape>
     </item>
     <item android:state_selected="true">
         <shape android:shape="rectangle">
             <solid android:color="#3A3320" />
-            <corners android:radius="8dp" />
+            <corners android:radius="14dp" />
             <stroke android:width="2dp" android:color="#C9A96E" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@android:color/transparent" />
+            <solid android:color="#FF242B34" />
+            <corners android:radius="14dp" />
         </shape>
     </item>
 </selector>
