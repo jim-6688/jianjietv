@@ -33,7 +33,7 @@ import androidx.annotation.NonNull;
 import androidx.dynamicanimation.animation.FloatPropertyCompat;
 import androidx.dynamicanimation.animation.SpringAnimation;
 import androidx.dynamicanimation.animation.SpringForce;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.Collator;
@@ -57,6 +57,8 @@ final class AppLibraryDialog {
     private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
     /** 全部应用的上限：系统应用全量枚举时的保险丝，正常电视远到不了这个数。 */
     private static final int MAX_CATALOG = 400;
+    /** 网格卡片高度（dp）：全屏列表一行的高度，图标 56dp 加上名称与状态。 */
+    private static final int CARD_HEIGHT_DP = 110;
     /** Labels kept between openings (LOADER thread only), until the app is updated. */
     private static final Map<String, Known> KNOWN = new HashMap<>();
 
@@ -112,12 +114,19 @@ final class AppLibraryDialog {
     private FrameLayout shelf;
     private GlassView highlight;
     private SpringAnimation spring;
+    private SpringAnimation springY;
+    /** 横向/纵向滚动量：玻璃高亮按「内容坐标」定位，滚动时要抵掉滚动量才不会跟着内容漂走。 */
     private float scrollOffset;
+    private float scrollOffsetY;
     private boolean highlightShown;
     private final int catalogWidth;
+    private final int catalogHeight;
+    /** 全屏网格的列数，按屏宽算，保证每张卡片都不会挤成一条。 */
+    private int columns = 6;
 
     private void stopHighlight() {
         if (spring != null) spring.cancel();
+        if (springY != null) springY.cancel();
         if (catalog != null) catalog.stopScroll();
         catalog = null;
         highlightShown = false;
@@ -128,15 +137,20 @@ final class AppLibraryDialog {
         Rect rect = new Rect(0, 0, card.getWidth(), card.getHeight());
         shelf.offsetDescendantRectToMyCoords(card, rect);
         ViewGroup.LayoutParams lp = highlight.getLayoutParams();
-        lp.width = rect.width() + dp(12);
-        lp.height = rect.height() + dp(12);
+        lp.width = rect.width() + dp(10);
+        lp.height = rect.height() + dp(10);
         highlight.setLayoutParams(lp);
-        highlight.setTranslationY(rect.top - dp(6));
-        float x = rect.left - dp(6) + scrollOffset;
+        float x = rect.left - dp(5) + scrollOffset;
+        float y = rect.top - dp(5) + scrollOffsetY;
         if (!highlightShown || !animate || !animations) {
-            spring.cancel();
+            if (spring != null) spring.cancel();
+            if (springY != null) springY.cancel();
             highlight.setTranslationX(x - scrollOffset);
-        } else spring.animateToFinalPosition(x);
+            highlight.setTranslationY(y - scrollOffsetY);
+        } else {
+            if (spring != null) spring.animateToFinalPosition(x);
+            if (springY != null) springY.animateToFinalPosition(y);
+        }
         highlightShown = true;
         highlight.setAlpha(1f);
     }
@@ -189,13 +203,19 @@ final class AppLibraryDialog {
         panel = new LinearLayout(activity);
         panel.setLayoutDirection(rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(12), dp(8), dp(12), dp(12));
+        panel.setPadding(dp(20), dp(14), dp(20), dp(16));
         panel.setBackgroundResource(R.drawable.glass_panel);
+        // 全屏列表：整块玻璃贴着屏幕边缘留一点缝，应用库不再是一行三个的居中浮层。
         View decor = activity.getWindow().getDecorView();
-        catalogWidth = Math.min(dp(800), Math.max(dp(200), decor.getWidth() - dp(64)));
-        int width = catalogWidth;
-        int height = dp(280);
-        popup = new PopupWindow(panel, width, height, true);
+        int screenWidth = decor.getWidth() > 0 ? decor.getWidth()
+                : activity.getResources().getDisplayMetrics().widthPixels;
+        int screenHeight = decor.getHeight() > 0 ? decor.getHeight()
+                : activity.getResources().getDisplayMetrics().heightPixels;
+        catalogWidth = Math.max(dp(400), screenWidth - dp(16));
+        catalogHeight = Math.max(dp(240), screenHeight - dp(16));
+        int usable = catalogWidth - panel.getPaddingLeft() - panel.getPaddingRight();
+        columns = Math.max(3, usable / dp(196));
+        popup = new PopupWindow(panel, catalogWidth, catalogHeight, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popup.setOutsideTouchable(true);
         popup.setAnimationStyle(0);
@@ -428,19 +448,19 @@ final class AppLibraryDialog {
 
     private void showCatalog() {
         stopHighlight();
-        resize(catalogWidth, dp(280));
+        resize(catalogWidth, catalogHeight);
         panel.removeAllViews();
         LinearLayout header = new LinearLayout(activity);
         header.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(12), dp(4), dp(8), dp(4));
-        TextView title = text(activity.getString(R.string.app_library), 22, Color.WHITE);
-        header.addView(title, new LinearLayout.LayoutParams(0, dp(36), 1));
+        header.setPadding(dp(10), dp(2), dp(6), dp(2));
+        TextView title = text(activity.getString(R.string.app_library), 26, Color.WHITE);
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(44), 1));
         title.setGravity(Gravity.CENTER_VERTICAL | (rtl ? Gravity.RIGHT : Gravity.LEFT));
         title.setSingleLine(true);
         title.setEllipsize(TextUtils.TruncateAt.END);
         TextView count = text(activity.getResources().getQuantityString(
-                R.plurals.library_app_count, totalApps, totalApps), 13, 0xA6FFFFFF);
+                R.plurals.library_app_count, totalApps, totalApps), 14, 0xA6FFFFFF);
         count.setSingleLine(true);
         header.addView(count, new LinearLayout.LayoutParams(-2, -2));
         // The launcher has no global supportsRtl: explicitly mirror this horizontal row.
@@ -449,12 +469,12 @@ final class AppLibraryDialog {
             header.addView(count, 0);
             count.setPadding(0, 0, dp(12), 0);
         }
-        panel.addView(header, new LinearLayout.LayoutParams(-1, dp(44)));
+        panel.addView(header, new LinearLayout.LayoutParams(-1, dp(52)));
         instructions = text(hint(false), 13, 0xBBFFFFFF);
         instructions.setSingleLine(true);
         instructions.setEllipsize(TextUtils.TruncateAt.END);
-        instructions.setPadding(dp(12), 0, dp(12), dp(6));
-        panel.addView(instructions, new LinearLayout.LayoutParams(-1, dp(26)));
+        instructions.setPadding(dp(10), 0, dp(10), dp(4));
+        panel.addView(instructions, new LinearLayout.LayoutParams(-1, dp(24)));
         panel.setFocusableInTouchMode(apps.isEmpty());
         if (apps.isEmpty()) {
             instructions.setVisibility(View.GONE);
@@ -470,13 +490,14 @@ final class AppLibraryDialog {
         RecyclerView list = new RecyclerView(activity);
         list.setLayoutDirection(rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         catalog = list;
-        list.setLayoutManager(new LinearLayoutManager(activity, RecyclerView.HORIZONTAL, false) {
+        // 全屏网格：多列多行，一屏就能看到大部分应用，不再是横向滚一行。
+        list.setLayoutManager(new GridLayoutManager(activity, columns, RecyclerView.VERTICAL, false) {
             @Override protected boolean isLayoutRTL() { return rtl; }
         });
         list.setItemAnimator(null);
         list.setOverScrollMode(View.OVER_SCROLL_NEVER);
         list.setClipToPadding(false);
-        list.setPadding(dp(10), dp(8), dp(10), dp(8));
+        list.setPadding(dp(6), dp(6), dp(6), dp(6));
         list.setAdapter(new Catalog());
         shelf.addView(list, new FrameLayout.LayoutParams(-1, -1));
         highlight = new GlassView(activity, null);
@@ -484,19 +505,35 @@ final class AppLibraryDialog {
         highlight.setAlpha(0f);
         highlight.setFocusable(false);
         highlight.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        // Matches the big catalogue card plus the 6dp rim on each side.
-        shelf.addView(highlight, new FrameLayout.LayoutParams(dp(260), dp(164)));
+        // Matches one grid card plus the 5dp rim on each side.
+        int cardWidth = (catalogWidth - panel.getPaddingLeft() - panel.getPaddingRight() - dp(12)) / columns;
+        shelf.addView(highlight, new FrameLayout.LayoutParams(cardWidth, dp(CARD_HEIGHT_DP + 12)));
         scrollOffset = 0;
+        scrollOffsetY = 0;
         spring = new SpringAnimation(highlight, new FloatPropertyCompat<View>("libraryScrollX") {
             @Override public float getValue(View view) { return view.getTranslationX() + scrollOffset; }
             @Override public void setValue(View view, float value) { view.setTranslationX(value - scrollOffset); }
         });
-        if (reducedMotion) Motion.reduce(spring);
-        else spring.setSpring(new SpringForce().setStiffness(260f).setDampingRatio(0.58f));
+        springY = new SpringAnimation(highlight, new FloatPropertyCompat<View>("libraryScrollY") {
+            @Override public float getValue(View view) { return view.getTranslationY() + scrollOffsetY; }
+            @Override public void setValue(View view, float value) { view.setTranslationY(value - scrollOffsetY); }
+        });
+        if (reducedMotion) {
+            Motion.reduce(spring);
+            Motion.reduce(springY);
+        } else {
+            SpringForce force = new SpringForce().setStiffness(260f).setDampingRatio(0.58f);
+            spring.setSpring(force);
+            springY.setSpring(new SpringForce().setStiffness(260f).setDampingRatio(0.58f));
+        }
         list.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
                 scrollOffset += dx;
-                highlight.setTranslationX(highlight.getTranslationX() - dx);
+                scrollOffsetY += dy;
+                if (highlight != null) {
+                    highlight.setTranslationX(highlight.getTranslationX() - dx);
+                    highlight.setTranslationY(highlight.getTranslationY() - dy);
+                }
             }
         });
         panel.addView(shelf, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -504,7 +541,7 @@ final class AppLibraryDialog {
         for (int i = 0; i < apps.size(); i++) {
             if (apps.get(i).activityInfo.packageName.equals(selectedPackage)) { position = i; break; }
         }
-        ((LinearLayoutManager) list.getLayoutManager()).scrollToPositionWithOffset(position, selectedOffset);
+        ((GridLayoutManager) list.getLayoutManager()).scrollToPositionWithOffset(position, 0);
         final int target = position;
         list.post(() -> {
             if (catalog != list || !popup.isShowing()) return;
@@ -722,10 +759,12 @@ final class AppLibraryDialog {
             // with just the name and status beside it. Like Home, the icon takes ~1/2 of the card
             // height: big enough to recognise, small enough that a low-resolution TV icon stays sharp.
             FrameLayout row = new FrameLayout(activity);
-            RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(dp(248), dp(152));
-            params.setMargins(dp(8), dp(2), dp(8), dp(2));
+            // 全屏网格里一张卡片占一个格子：宽度交给 GridLayoutManager 均分。
+            RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(CARD_HEIGHT_DP));
+            params.setMargins(dp(4), dp(3), dp(4), dp(3));
             row.setLayoutParams(params);
-            row.setPadding(dp(16), dp(12), dp(12), dp(12));
+            row.setPadding(dp(14), dp(8), dp(10), dp(8));
             row.setFocusableInTouchMode(true);
             row.setClickable(true);
             LinearLayout content = new LinearLayout(activity);
@@ -735,26 +774,27 @@ final class AppLibraryDialog {
             ImageView icon = new ImageView(activity);
             icon.setId(R.id.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(76), dp(76));
-            iconParams.setMarginEnd(dp(14));
+            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(56), dp(56));
+            iconParams.setMarginEnd(dp(12));
             content.addView(icon, iconParams);
             LinearLayout words = new LinearLayout(activity);
             words.setOrientation(LinearLayout.VERTICAL);
             words.setGravity(Gravity.CENTER_VERTICAL);
             content.addView(words, new LinearLayout.LayoutParams(0, -1, 1f));
-            TextView name = text("", 18, Color.WHITE);
+            TextView name = text("", 16, Color.WHITE);
             name.setId(R.id.title);
             name.setMaxLines(2);
             words.addView(name, new LinearLayout.LayoutParams(-1, -2));
-            TextView status = text("", 12, 0xBBFFFFFF);
+            TextView status = text("", 11, 0xBBFFFFFF);
             status.setId(R.id.status);
-            status.setMaxLines(2);
+            status.setMaxLines(1);
+            status.setEllipsize(TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-1, -2);
-            statusParams.topMargin = dp(8);
+            statusParams.topMargin = dp(4);
             words.addView(status, statusParams);
             View check = new View(activity);
             check.setId(R.id.dot);
-            FrameLayout.LayoutParams badge = new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.TOP | Gravity.END);
+            FrameLayout.LayoutParams badge = new FrameLayout.LayoutParams(dp(16), dp(16), Gravity.TOP | Gravity.END);
             badge.setMargins(0, dp(2), dp(2), 0);
             row.addView(check, badge);
             return new Row(row);
@@ -773,10 +813,10 @@ final class AppLibraryDialog {
             status.setText(!entry ? R.string.library_app_info
                     : home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
             status.setVisibility(!entry || home || !okOpens ? View.VISIBLE : View.INVISIBLE);
-            holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 24));
+            holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 18));
             View check = holder.itemView.findViewById(R.id.dot);
-            check.getLayoutParams().width = dp(home ? 18 : 8);
-            check.getLayoutParams().height = dp(home ? 18 : 8);
+            check.getLayoutParams().width = dp(home ? 16 : 7);
+            check.getLayoutParams().height = dp(home ? 16 : 7);
             if (home) check.setBackgroundResource(R.drawable.library_check);
             else check.setBackground(surface(0xFF70D9A0, 8));
             check.setVisibility(home || recent ? View.VISIBLE : View.GONE);
@@ -799,13 +839,6 @@ final class AppLibraryDialog {
                     int index = holder.getBindingAdapterPosition();
                     if (index != RecyclerView.NO_POSITION) selectedPosition = index;
                 }
-            });
-            holder.itemView.setOnKeyListener((v, key, event) -> {
-                int index = holder.getBindingAdapterPosition();
-                return event.getAction() == KeyEvent.ACTION_DOWN && (key == KeyEvent.KEYCODE_DPAD_UP
-                        || key == KeyEvent.KEYCODE_DPAD_DOWN
-                        || (rtl ? key == KeyEvent.KEYCODE_DPAD_RIGHT : key == KeyEvent.KEYCODE_DPAD_LEFT) && index == 0
-                        || (rtl ? key == KeyEvent.KEYCODE_DPAD_LEFT : key == KeyEvent.KEYCODE_DPAD_RIGHT) && index == apps.size() - 1);
             });
         }
         @Override public int getItemCount() { return apps.size(); }
