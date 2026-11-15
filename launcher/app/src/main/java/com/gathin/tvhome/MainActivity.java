@@ -3150,7 +3150,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             button.setCompoundDrawableTintList(null);
             button.setContentDescription(label);
             Intent target = launch;
-            button.setOnClickListener(v -> open(new Intent(target)));
+            button.setOnClickListener(v -> openTopApp(target));
             // After the network pill and the VPN pill; the Hebrew bar runs the other way, so before both there.
             bar.addView(button, bar.indexOfChild(getResources().getBoolean(R.bool.rtl_menu_bar) ? btnVpn : btnWifi));
             topAppButtons.add(button);
@@ -3853,6 +3853,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void open(Intent i) {
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(i);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            Toast.makeText(this, R.string.not_available, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Top-bar shortcut apps: open the target in its own task, resumed at its root, so it fills the screen
+     *  (same launch as the dock tiles) instead of opening inside the launcher's window. */
+    private void openTopApp(Intent i) {
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         try {
             startActivity(i);
         } catch (ActivityNotFoundException | SecurityException e) {

@@ -737,7 +737,7 @@ final class Config {
         int chosenInterval = choices.getInt(WALLPAPER_INTERVAL_KEY, 0);
         if (chosenInterval >= 10 && chosenInterval <= 1440) rotationMinutes = chosenInterval;
         int wallpaperDim = json == null ? 0 : integer(json, "wallpaper_dim", 0, 0, 90);
-        int dockOpacity = json == null ? 100 : integer(json, "dock_opacity", 100, 30, 100);
+        int dockOpacity = json == null ? 30 : integer(json, "dock_opacity", 30, 30, 100);
         dockOpacity = chosenDockOpacity(choices.getInt(DOCK_OPACITY_KEY, -1), dockOpacity);
         int dockRadius = res.getInteger(R.integer.dock_radius);
         int dockPadding = res.getInteger(R.integer.dock_padding);

@@ -297,7 +297,7 @@
          and the rest live in the app library, where holding OK puts one in a place or replaces one. Needs dock_row.
          A theme can set "dock_count": 6 for a fuller dock; the dock never holds more apps than this, and an app
          past it stays in the library. -->
-    <integer name="dock_count">5</integer>
+    <integer name="dock_count">6</integer>
     <!-- Names under the dock tiles (config.xml dock_show_names). Off by default: the dock shows only the artwork,
          like Apple TV. On shows each dock tile's name dimmed until focused, as always_show_names does for the grid. -->
     <bool name="dock_show_names">false</bool>
