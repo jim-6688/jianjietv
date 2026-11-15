@@ -292,7 +292,7 @@ fi
 domestic_tv_setup() {
   CFG_DIR=/sdcard/Android/data/com.gathin.tvhome/files
   CFG=$CFG_DIR/config.json
-  # Merge the three keys into a theme's config.json instead of overwriting it. The TV shell has no
+  # Merge these keys into a theme's config.json instead of overwriting it. The TV shell has no
   # JSON tool, so the merge runs here in the venv's Python. Quotes in a theme (greetingName can
   # contain an apostrophe) are written as \u0027 so the result survives one single-quoted printf.
   if ! OLD=$("$PY" -I ../tools/tv.py "mkdir -p $CFG_DIR; cat $CFG 2>/dev/null || echo {}"); then
@@ -308,6 +308,10 @@ except ValueError:
 data.update({"power_on_home_always": True,
              "restore_key_services": True,
              "stock_home_redirect": "com.tianci.movieplatform"})
+# Their firmware applies the volume keys itself before accessibility sees them, so a helper that
+# filters keys turns one press into several steps (Skyworth 9TA01: 2 to 9). Off unless a theme
+# asks for it, and setdefault so an explicit choice in the theme wins.
+data.setdefault("key_filter", False)
 print(json.dumps(data, separators=(",", ":")).replace(chr(39), chr(92) + "u0027"))
 ') || { echo "ERROR: could not merge $CFG; the launcher is installed and is Home." >&2; exit 1; }
   "$PY" -I ../tools/tv.py "printf '%s' '$NEW' > $CFG" >/dev/null \

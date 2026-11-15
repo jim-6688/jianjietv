@@ -45,12 +45,15 @@ adb shell 'cmd package set-home-activity --user 0 com.gathin.tvhome/.MainActivit
 adb shell 'pm grant com.gathin.tvhome android.permission.WRITE_SECURE_SETTINGS'
 adb shell 's=$(settings get secure enabled_accessibility_services); case "$s" in *com.gathin.tvhome/.HomeKeyService*) ;; null|"") settings put secure enabled_accessibility_services com.gathin.tvhome/.HomeKeyService ;; *) settings put secure enabled_accessibility_services "$s:com.gathin.tvhome/.HomeKeyService" ;; esac; settings put secure accessibility_enabled 1'
 
-# 3) 运行时配置：开机 3 分钟内把前台拉回桌面、重装后自恢复服务、原厂桌面出现就重定向
-adb shell "printf '%s' '{\"power_on_home_always\":true,\"restore_key_services\":true,\"stock_home_redirect\":\"com.tianci.movieplatform\"}' > /sdcard/Android/data/com.gathin.tvhome/files/config.json"
+# 3) 运行时配置：开机窗口内把前台拉回桌面、重装后自恢复服务、原厂桌面出现就重定向、
+#    并关掉按键过滤（本机固件自己处理音量键，过滤会让一次按键连跳多格，见下文「音量键」）
+adb shell "printf '%s' '{\"power_on_home_always\":true,\"restore_key_services\":true,\"stock_home_redirect\":\"com.tianci.movieplatform\",\"key_filter\":false}' > /sdcard/Android/data/com.gathin.tvhome/files/config.json"
 ```
-> 若该文件已存在（主题配置），**不要整份覆盖**：读出 JSON 后只合并上面三个键再写回。
-> `stock_home_redirect` 依赖 `MATCH_DISABLED_COMPONENTS` 能查到原厂 HOME activity，本机可能查不到，
-> `power_on_home_always` 才是主力。
+> 若该文件已存在（主题配置），**不要整份覆盖**：读出 JSON 后只合并上面四个键再写回。
+> `stock_home_redirect` 的 activity 查询在这台机上取不到结果，所以代码另有一条**按包名**命中；
+> 两条都在也不影响。
+> `key_filter: false` 是**必须**的：本机只要 `主页键` 服务在过滤按键，按一次音量键就会连跳多格。
+> 改完要重绑服务才生效（卸载重装/写无障碍列表都会触发重绑）。
 
 ```bash
 # 4) 关掉 AOD 悬浮窗；顺序必须是先 deny 再落盘，否则重启会丢
@@ -103,10 +106,12 @@ adb shell 'appops write-settings'
 `power_on_home_always` 遇到「用户先按键」会让位，多按一下就无法判定是不是桌面自己拉起的；
 开机后等 20–30 秒再连 ADB，检查时不要 `am start`。
 
-## 音量键「自己跑到 0 / 100」：固件长按加速，不是守护程序
+## 音量键乱跳（一按冲到底 / 一次连跳多格）：固件执行 + 按键过滤放大，守护无罪
 
-用户报「加音量自动拉到 100，减音量自动拉到 0」。测量结论：**全部是酷开固件 `com.tianci.system`
-自己的按键重复 + 长按加速**，与 launcher、`com.jim.tvhomehijack` 无关。
+用户先后报过两种：「加音量自动拉到 100，减音量自动拉到 0」和安装桌面后「守护又在抢音量」。
+测量结论：**动作全部是酷开固件 `com.tianci.system` 做的**（`dumpsys audio` 里每一笔都来自它），
+但**次数**取决于我们的 `主页键`（`HomeKeyService`）在不在过滤按键——它一过滤，按一次会连跳 2~9 格；
+守护包 `com.jim.tvhomehijack` 与此无关（摘掉它音量行为不变）。
 
 取证方法（shell 已在 `input` 组，`/dev/input/event7` 可写，不需要 root）：
 
@@ -121,27 +126,33 @@ adb shell 'media volume --stream 3 --set 60; sendevent /dev/input/event7 1 114 1
 
 | 操作 | 结果 | 折算 |
 | --- | --- | --- |
-| 单击 50 ms | 11 → 10 | 1 格 |
+| 单击 50 ms，三项服务齐全、`key_filter` 默认 `true` | 50 → 48（一次）/ 50 → 41（一次） | **2~9 格**，就是用户说的「守护在抢音量」 |
+| 同一条件下摘掉 `主页键`（只留守护 + 酷开） | 50 → 49 | 1 格，正常 |
+| `key_filter: false`（重绑后），三项服务齐全 | 50 → 49（减）/ 50 → 51（加） | 1 格，正常 |
 | 按住 0.6 s | 11 → 4 | 约 12 格/秒 |
 | 按住 3 s，每秒采样 | 60 → 48 → 23 → 0 | 第 1 秒 12 格，第 2 秒 25 格：**1 秒后开始加速** |
 | 松开后 2 s、5 s | 数值不再变化 | 松手即停，没有卡键 |
-| 把 `HomeKeyService` 整个从无障碍列表移除后重测 | 与上面完全一致 | 我们的服务不参与 |
 | 把 `consume_volume_keys` 设成 true 后重测 | 60 → 2（1.2 s） | **更糟**：固件照样执行，我们的重复是叠加的 |
 
 要点：
 
-- `dumpsys audio` 的 `volume changes` 里每一笔都是 `from com.tianci.system`，没有一笔来自 `com.gathin.tvhome`。
-- `ro.config.media_vol_steps=100`（普通 Android TV 是 15~30 格），配合加速，长按 4 秒就能横穿整个量程，
-  观感就是「一按冲到底」。
+- `dumpsys audio` 的 `volume changes` 里每一笔都是 `from com.tianci.system`，没有一笔来自 `com.gathin.tvhome`
+  或守护包：**动作是固件做的，触发次数是我们的按键过滤导致的**。守护 `HijackService` 只有窗口事件能力，
+  实测把它摘掉后音量行为不变，可以结案。
+- 结论：这台机上「`主页键`（`HomeKeyService`）在过滤按键」= 按一次音量键连跳多格。修法就是
+  `config.json` 里 `"key_filter": false`，改完**重绑服务**（写一次无障碍列表或重装）才生效；
+  关掉过滤不影响本机要用的两个功能（`power_on_home_always` / `stock_home_redirect` 走窗口事件，不是按键），
+  实测重定向照常把厂商桌面拉回来。
+- 之前那条「`capabilities=8` 说明还在过滤、`key_filter:false` 不生效」是**错的**：`capabilities` 是静态的
+  「允许过滤」能力位（来自 xml 的 `canRequestFilterKeyEvents`），真正的开关是 `flags` 里的
+  `FLAG_REQUEST_FILTER_KEY_EVENTS`，本机 `dumpsys accessibility` 不打印它。以实测为准。
+- `ro.config.media_vol_steps=100`（普通 Android TV 是 15~30 格），配合固件加速，长按 4 秒就能横穿整个量程。
 - 这台机器**不要**开 `consume_volume_keys`：固件在无障碍过滤之前就已经处理过一次音量键，吞掉按键只会让
   我们自己的步进叠加在固件步进上（实测 1.2 秒从 60 掉到 2）。
-- 另一个独立发现：`config.json` 里 `key_filter: false` 在这台固件上**不生效**——重绑服务后 `dumpsys
-  accessibility` 里 `主页键` 仍是 `capabilities=8`（`FLAG_REQUEST_FILTER_KEY_EVENTS`），
-  `setServiceInfo` 清掉的标志被系统又装回去了。它不影响音量结论（服务整个停掉行为不变），
-  但想彻底不参与按键过滤只能不启用该服务。
-- 无解的部分：加速逻辑在固件内部，没有用户可关的开关（`SkySystemService.apk` 里只有 `key action
-  accelerate`、`downRepeatCount` 这类代码，以及酒店模式的 `setHotelMaxmunVolume` 限幅）。
-  实际建议是短按（一次一格）而不是按住。
+- 加速逻辑在固件内部，没有用户可关的开关（`SkySystemService.apk` 里只有 `key action accelerate`、
+  `downRepeatCount` 这类代码，以及酒店模式的 `setHotelMaxmunVolume` 限幅）。实际建议是短按（一次一格）。
+- 排查手法（下次再用）：一次只动一个变量——`settings put secure enabled_accessibility_services` 摘一个服务、
+  重绑、`media volume --set 50` 后 `sendevent` 单点一次、读 `settings get system volume_music_speaker`。
 
 ## 视频壁纸（Apple Aerial）在这台机上的三个坑
 

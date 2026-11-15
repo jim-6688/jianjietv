@@ -207,6 +207,12 @@ if ($DomesticTv) {
     $data | Add-Member -NotePropertyName power_on_home_always -NotePropertyValue $true -Force
     $data | Add-Member -NotePropertyName restore_key_services -NotePropertyValue $true -Force
     $data | Add-Member -NotePropertyName stock_home_redirect -NotePropertyValue 'com.tianci.movieplatform' -Force
+    # Their firmware applies the volume keys itself before accessibility sees them, so a helper that
+    # filters keys turns one press into several steps (Skyworth 9TA01: 2 to 9). Only filled in when the
+    # theme left it out, so an explicit key_filter in the theme still wins.
+    if (-not ($data.PSObject.Properties.Name -contains 'key_filter')) {
+        $data | Add-Member -NotePropertyName key_filter -NotePropertyValue $false -Force
+    }
     $json = ($data | ConvertTo-Json -Compress).Replace("'", '\u0027')
     ("printf '%s' '" + $json + "' > " + $cfg) | & $py -I ..\tools\tv.py --batch
     if ($LASTEXITCODE -ne 0) { throw "could not write $cfg; the launcher is installed and is Home" }
