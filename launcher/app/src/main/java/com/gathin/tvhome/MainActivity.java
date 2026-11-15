@@ -140,8 +140,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** 重读配置并把改动实时落到首页：重排程序坞（应用数量）、换壁纸，不再 recreate。 */
     private void applySettingsLive() {
         settingsRevision = settingsRevision();
+        Config previous = cfg;
         cfg = Config.load(this);
-        reloadApps(true);
+        // 只有程序坞布局项（应用数量/名称）变化才重建磁贴。壁纸类改动若也走 reloadApps，
+        // 会先把 top shelf 与图标的 alpha 清零、重放入场动画，再等下一帧焦点回填后慢慢淡入，
+        // 这正是「切换壁纸/设置后闪一下才生效」的根因：壁纸其实已换，闪来自整页重建。
+        boolean dockChanged = previous == null
+                || previous.dockCount != cfg.dockCount
+                || previous.dockShowNames != cfg.dockShowNames
+                || previous.dockOnly != cfg.dockOnly;
+        if (dockChanged) {
+            reloadApps(false);   // 改数量时重建磁贴，但不重播入场动画，避免整页闪一下
+        }
         // 壁纸要能实时切换静态/动态；update() 只刷静态图，reconfigure 才处理视频层。
         if (wallpaperPlayer != null) wallpaperPlayer.reconfigure(this, cfg);
         updateFavoriteButton();
@@ -1220,26 +1230,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         wallpaperPlayer.setFiles(source);
     }
 
-    /** Star tap: save or unsave the picture currently on screen, then repaint the button and the rotation. */
+    /** Star tap: save or unsave whatever is on screen — a still picture or the clip currently playing. */
     private void toggleWallpaperFavorite() {
+        boolean video = !WallpaperFavorites.currentVideoUrl(this).isEmpty();
         WallpaperFavorites.toggle(this);
         updateFavoriteButton();
         // With "favourites only" on, a newly saved picture joins the rotation without waiting for a rebuild.
-        if (WallpaperFavorites.only(this) && wallpaperPlayer != null) {
+        // In video mode there is no still collection to update.
+        if (!video && WallpaperFavorites.only(this) && wallpaperPlayer != null) {
             wallpaperPlayer.setFiles(WallpaperFavorites.files(this));
         }
     }
 
-    /** Star long-press: the same favourites list as Launcher settings. */
+    /** Star long-press: the same favourites list as Launcher settings, applied live (no Home rebuild). */
     private void openWallpaperFavorites() {
-        WallpaperFavorites.showPicker(this, this::recreate, this::updateFavoriteButton);
+        // onListChange also reconfigures: deleting the clip currently held on screen returns video
+        // wallpaper to a random clip right away instead of waiting for the next settings change.
+        WallpaperFavorites.showPicker(this, this::applySettingsLive, this::applySettingsLive);
     }
 
     /** Hollow star / gold filled star, and a content description that says what the next tap will do. */
     private void updateFavoriteButton() {
         if (btnFavorite == null) return;
-        boolean saved = WallpaperFavorites.contains(
-                WallpaperFavorites.files(this), WallpaperFavorites.current(this));
+        String clip = WallpaperFavorites.currentVideoUrl(this);
+        boolean saved = clip.isEmpty()
+                ? WallpaperFavorites.contains(
+                        WallpaperFavorites.files(this), WallpaperFavorites.current(this))
+                : WallpaperFavorites.containsVideo(this, clip);
         btnFavorite.setCompoundDrawablesRelativeWithIntrinsicBounds(
                 saved ? R.drawable.ic_star_filled : R.drawable.ic_star_outline, 0, 0, 0);
         btnFavorite.setCompoundDrawableTintList(saved ? FAVORITE_GOLD : favoriteDefaultTint);

@@ -179,8 +179,8 @@
     <string name="wallpaper_favorite_remove">Remove this wallpaper from favourites</string>
     <string name="wallpaper_favorites_state">Wallpaper favourites: %1$d</string>
     <string name="wallpaper_favorites_title">Wallpaper favourites</string>
-    <string name="wallpaper_favorites_empty">No favourites yet. While a picture is on screen, press the star button in the top bar (or choose Favourite this wallpaper in Launcher settings).</string>
-    <string name="wallpaper_favorite_none">No still wallpaper is on screen to favourite</string>
+    <string name="wallpaper_favorites_empty">No favourites yet. Press the star button in the top bar to save the picture on screen, or the clip currently playing as a dynamic wallpaper.</string>
+    <string name="wallpaper_favorite_none">No wallpaper is on screen to favourite</string>
     <string name="wallpaper_favorite_added">Saved to favourites</string>
     <string name="wallpaper_favorite_removed">Removed from favourites</string>
     <string name="wallpaper_favorite_applied">Favourite wallpaper enabled</string>
@@ -190,4 +190,5 @@
     <string name="wallpaper_favorites_only_on">Favourites only: on</string>
     <string name="wallpaper_favorites_only_off">Favourites only: off</string>
     <string name="wallpaper_favorites_hint">Pick one to hold it on screen · long-press one to remove · Back closes</string>
+    <string name="wallpaper_favorite_video_item">Video · %1$s</string>
 </resources>

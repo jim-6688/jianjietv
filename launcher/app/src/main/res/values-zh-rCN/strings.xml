@@ -187,10 +187,10 @@
     <string name="columns_auto">自动</string>
     <string name="wallpaper_favorite_add">收藏当前壁纸</string>
     <string name="wallpaper_favorite_remove">取消收藏当前壁纸</string>
-    <string name="wallpaper_favorites_state">壁纸喜好：%1$d 张</string>
+    <string name="wallpaper_favorites_state">壁纸喜好：%1$d 个</string>
     <string name="wallpaper_favorites_title">壁纸喜好</string>
-    <string name="wallpaper_favorites_empty">还没有收藏的壁纸。看到喜欢的画面时，点顶栏的 ★ 按钮即可收藏（也可在桌面设置里收藏）。</string>
-    <string name="wallpaper_favorite_none">当前没有可收藏的静态壁纸</string>
+    <string name="wallpaper_favorites_empty">还没有收藏的壁纸。看到喜欢的静态画面或正在播放的动态壁纸时，点顶栏的 ★ 按钮即可收藏。</string>
+    <string name="wallpaper_favorite_none">当前没有可收藏的壁纸</string>
     <string name="wallpaper_favorite_added">已加入壁纸喜好</string>
     <string name="wallpaper_favorite_removed">已取消收藏</string>
     <string name="wallpaper_favorite_applied">已启用收藏的壁纸</string>
@@ -199,5 +199,6 @@
     <string name="wallpaper_favorites_delete">移除这张</string>
     <string name="wallpaper_favorites_only_on">只轮换喜好：开</string>
     <string name="wallpaper_favorites_only_off">只轮换喜好：关</string>
-    <string name="wallpaper_favorites_hint">选一张设为固定壁纸 · 长按移除 · 返回键关闭</string>
+    <string name="wallpaper_favorites_hint">选一项设为固定壁纸 · 长按移除 · 返回键关闭</string>
+    <string name="wallpaper_favorite_video_item">动态 · %1$s</string>
 </resources>

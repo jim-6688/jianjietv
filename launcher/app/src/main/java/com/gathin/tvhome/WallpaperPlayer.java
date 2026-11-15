@@ -56,6 +56,12 @@ final class WallpaperPlayer {
     private ExoPlayer player;
     private List<String> videoUrls;
     private boolean videoMode;
+    /** App context, so playOne() can read the favourite clip the owner pinned without a Context parameter. */
+    private final Context appContext;
+    /** URL of the clip currently playing; empty in still mode. Mirrors wallpaper_rotation's video_url. */
+    private String currentVideoUrl = "";
+    /** The favourite clip last pinned for playback; empty means the manifest picks clips at random. */
+    private String pinnedUrl = "";
     private int lastVideoW, lastVideoH;
     private final Random videoRandom = new Random();
     private final int width;
@@ -82,6 +88,7 @@ final class WallpaperPlayer {
 
     WallpaperPlayer(Context context, FrameLayout root, Config config) {
         this.root = root;
+        appContext = context.getApplicationContext();
         backgroundColor = config.backgroundColor;
         files = new ArrayList<>(config.wallpapers);
         interval = config.wallpaperRotationMinutes * 60_000L;
@@ -112,8 +119,9 @@ final class WallpaperPlayer {
         // Video wallpaper (Aerial-style): stream a looping, muted clip behind Home. Falls back to the
         // still-picture rotation only when the video switch is off or the source is unavailable.
         boolean videoPending = false;
+        pinnedUrl = WallpaperFavorites.selectedVideo(context);
         if (config.wallpaperVideoEnabled) {
-            List<String> list = WallpaperVideo.urls(context, config.wallpaperVideoManifest);
+            List<String> list = videoSources(context, config);
             if (!list.isEmpty()) {
                 setupVideoLayer(context, list);
             } else if (WallpaperVideo.isRemote(config.wallpaperVideoManifest)) {
@@ -194,20 +202,44 @@ final class WallpaperPlayer {
         interval = config.wallpaperRotationMinutes * 60_000L;
         boolean wantVideo = config.wallpaperVideoEnabled;
 
-        if (wantVideo && videoView == null) {
-            // 静态 -> 动态：片源就绪才切，起不来就继续显示当前静态图。
-            List<String> list = WallpaperVideo.urls(context, config.wallpaperVideoManifest);
-            if (!list.isEmpty()) {
-                bringUpVideo(context, list);
-            } else if (WallpaperVideo.isRemote(config.wallpaperVideoManifest)) {
-                WallpaperVideo.fetchRemote(config.wallpaperVideoManifest, urls -> {
-                    if (!urls.isEmpty() && videoView == null && !closed) bringUpVideo(context, urls);
-                });
+        if (wantVideo) {
+            String pinned = WallpaperFavorites.selectedVideo(context);
+            List<String> list = videoSources(context, config);
+            if (videoView == null) {
+                // 静态 -> 动态：片源就绪才切，起不来就继续显示当前静态图。
+                pinnedUrl = pinned;
+                if (!list.isEmpty()) {
+                    bringUpVideo(context, list);
+                } else if (WallpaperVideo.isRemote(config.wallpaperVideoManifest)) {
+                    WallpaperVideo.fetchRemote(config.wallpaperVideoManifest, urls -> {
+                        if (!urls.isEmpty() && videoView == null && !closed) bringUpVideo(context, urls);
+                    });
+                }
+                return;
+            }
+            // 已在视频模式：收藏列表里选中的片源变了就换片（或取消固定后恢复随机）。
+            if (!pinned.equals(pinnedUrl) || !list.equals(videoUrls)) {
+                pinnedUrl = pinned;
+                if (!list.isEmpty()) {
+                    videoUrls = list;
+                    playOne();
+                    if (active && player != null) player.play();
+                } else if (WallpaperVideo.isRemote(config.wallpaperVideoManifest)) {
+                    // 远程 manifest 还没缓存：拉到片源再换，别一直停在旧片上。
+                    WallpaperVideo.fetchRemote(config.wallpaperVideoManifest, urls -> {
+                        if (!urls.isEmpty() && videoView != null && !closed) {
+                            videoUrls = urls;
+                            playOne();
+                            if (active && player != null) player.play();
+                        }
+                    });
+                }
             }
             return;
         }
 
-        if (!wantVideo && videoView != null) {
+        boolean wasVideo = videoView != null;
+        if (wasVideo) {
             // 动态 -> 静态：拆掉视频层，恢复静态图。
             tearDownVideo();
         }
@@ -215,11 +247,15 @@ final class WallpaperPlayer {
         // 静态模式：同步最新的静态图片集合（收藏 / 来源变化）；集合没变就不重新解码。
         if (videoView == null && config.wallpaperEnabled && !config.wallpapers.isEmpty()) {
             String newKey = collectionKey(config.wallpapers);
-            if (!newKey.equals(collectionKey(files))) {
+            boolean collectionChanged = !newKey.equals(collectionKey(files));
+            if (collectionChanged) {
                 files.clear();
                 files.addAll(config.wallpapers);
                 preferences.edit().putString("collection", newKey)
                         .remove("image").remove("changed").apply();
+            }
+            // 从视频切回时必须重新解码：recordCurrent(null) 清过 path，星标要能重新认出这张静态图。
+            if (collectionChanged || wasVideo) {
                 displayed = "";
                 loading = false;
                 showFirst();
@@ -228,9 +264,18 @@ final class WallpaperPlayer {
         }
     }
 
-    /** 建立视频层并进入视频模式：先移走静态图，否则它会盖在视频上。 */
+    /**
+     * 片源：收藏列表里指定的那一条动态壁纸优先（固定播放），否则用 manifest 的全部片源随机轮换。
+     * 这样点收藏列表里的一条视频就能真正把它播出来，而不是继续随机。
+     */
+    private List<String> videoSources(Context context, Config config) {
+        String pinned = WallpaperFavorites.selectedVideo(context);
+        if (!pinned.isEmpty()) return Collections.singletonList(pinned);
+        return WallpaperVideo.urls(context, config.wallpaperVideoManifest);
+    }
+
+    /** 建立视频层并进入视频模式：视频层叠在静态图之上，首帧就绪后由回调撤掉静态图，全程无空窗。 */
     private void bringUpVideo(Context context, List<String> urls) {
-        if (image.getParent() == root) root.removeView(image);
         if (setupVideoLayer(context, urls) && active && player != null) player.play();
         if (toneListener != null) toneListener.onTone(0.35f); // Aerial clips are mostly dark; keep light text.
     }
@@ -239,6 +284,9 @@ final class WallpaperPlayer {
     private void tearDownVideo() {
         videoMode = false;
         videoUrls = null;
+        currentVideoUrl = "";
+        pinnedUrl = "";
+        preferences.edit().remove(WallpaperFavorites.VIDEO_CURRENT_KEY).apply();
         lastVideoW = lastVideoH = 0;
         if (player != null) {
             player.release();
@@ -290,14 +338,18 @@ final class WallpaperPlayer {
     private boolean setupVideoLayer(Context context, List<String> list) {
         if (list == null || list.isEmpty()) return false;
         videoMode = true;
-        recordCurrent(null);   // a streaming clip, not a still picture: nothing to favourite
+        recordCurrent(null);   // no still path to copy; playOne() records the clip URL for the star
         videoUrls = list;
         // TextureView instead of media3-ui's PlayerView: keeps the dependency to the already-cached
         // media3-exoplayer and lets us paint a centerCrop transform by hand. It throws on any background
         // drawable ("TextureView doesn't support displaying a background drawable"), so the plain colour
         // stays on the root, behind it.
         videoView = new TextureView(context);
-        root.addView(videoView, 0, new FrameLayout.LayoutParams(
+        // 关键：把视频层放在静态图之上（而非直接 remove 静态图）。TextureView 首帧解码出来前是透明的，
+        // 底下的静态图正好透出来当占位；首帧真正画出来后再撤掉静态图，切动态壁纸就不会闪一下纯色。
+        // 静态图不在视图树里时（冷启动就是视频模式），index 0 即可。
+        int videoIndex = image.getParent() == root ? root.indexOfChild(image) + 1 : 0;
+        root.addView(videoView, videoIndex, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         Log.i("TvHome.Wallpaper", "video layer up: " + list.size() + " clips, screen " + width + "x" + height);
         player = new ExoPlayer.Builder(context).build();
@@ -312,6 +364,12 @@ final class WallpaperPlayer {
                 lastVideoH = size.height;
                 Log.i("TvHome.Wallpaper", "video size " + size.width + "x" + size.height);
                 applyCrop();
+            }
+
+            @Override
+            public void onRenderedFirstFrame() {
+                // 视频第一帧真的画出来了，底下的静态图不再需要；此时撤掉不会露出纯色空窗。
+                if (videoView != null && image.getParent() == root) root.removeView(image);
             }
 
             @Override
@@ -350,6 +408,8 @@ final class WallpaperPlayer {
         try {
             player.setMediaItem(MediaItem.fromUri(url));
             player.prepare();
+            // 记下正在播放的那一条，星标按钮据此收藏动态壁纸。
+            recordCurrentVideo(url);
         } catch (Exception e) {
             Log.w("TvHome.Wallpaper", "video wallpaper failed to prepare " + url + ": " + e.getMessage());
         }
@@ -363,6 +423,8 @@ final class WallpaperPlayer {
         Log.w("TvHome.Wallpaper", "video wallpaper gave up: " + why);
         videoMode = false;
         videoUrls = null;
+        currentVideoUrl = "";
+        preferences.edit().remove(WallpaperFavorites.VIDEO_CURRENT_KEY).apply();
         if (player != null) {
             player.release();
             player = null;
@@ -521,7 +583,17 @@ final class WallpaperPlayer {
      * the favourites folder. Video mode passes null: there is no still to favourite.
      */
     private void recordCurrent(File file) {
-        preferences.edit().putString("path", file == null ? "" : file.getAbsolutePath()).apply();
+        // A still picture is on screen: it becomes the favourite target, and any clip marker is stale.
+        currentVideoUrl = "";
+        preferences.edit().putString("path", file == null ? "" : file.getAbsolutePath())
+                .remove(WallpaperFavorites.VIDEO_CURRENT_KEY).apply();
+    }
+
+    /** A streamed clip is on screen: the star saves this URL, and there is no still path to copy. */
+    private void recordCurrentVideo(String url) {
+        currentVideoUrl = url == null ? "" : url;
+        preferences.edit().putString(WallpaperFavorites.VIDEO_CURRENT_KEY, currentVideoUrl)
+                .putString("path", "").apply();
     }
 
     /** Puts a picture on screen and releases the previous one after a frame has drawn the new one. */

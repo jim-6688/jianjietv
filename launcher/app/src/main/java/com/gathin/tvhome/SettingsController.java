@@ -133,7 +133,9 @@ final class SettingsController {
         TextView dynamicCard = typeCard(c, R.string.wallpaper_dynamic, videoOn);
         staticCard.setOnClickListener(v -> {
             if (videoOn) {
-                choices.edit().remove(Config.WALLPAPER_VIDEO_KEY).apply();
+                // 切回静态：清掉收藏里固定播放的那条视频，之后再切动态会重新随机选片。
+                choices.edit().remove(Config.WALLPAPER_VIDEO_KEY)
+                        .remove(WallpaperFavorites.VIDEO_SELECTED_KEY).apply();
                 changed();
                 refresh();
                 refocus(wallpaperInline, staticCard.getText());
@@ -144,7 +146,8 @@ final class SettingsController {
         dynamicCard.setOnClickListener(v -> {
             if (!videoOn) {
                 choices.edit().putBoolean(Config.WALLPAPER_VIDEO_KEY, true)
-                        .remove(Config.WALLPAPER_CHOICE_KEY).apply();
+                        .remove(Config.WALLPAPER_CHOICE_KEY)
+                        .remove(WallpaperFavorites.VIDEO_SELECTED_KEY).apply();
                 changed();
                 refresh();
                 refocus(wallpaperInline, dynamicCard.getText());
@@ -249,8 +252,9 @@ final class SettingsController {
             boolean selected = usingDefault ? isSingle : name.equals(current);
             item.setSelected(selected);
             item.setOnClickListener(v -> {
-                choices.edit().remove(Config.WALLPAPER_VIDEO_KEY).apply();
-                choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, name).apply();
+                choices.edit().remove(Config.WALLPAPER_VIDEO_KEY)
+                        .remove(WallpaperFavorites.VIDEO_SELECTED_KEY)
+                        .putString(Config.WALLPAPER_CHOICE_KEY, name).apply();
                 Toast.makeText(a, R.string.wallpaper_applied, Toast.LENGTH_SHORT).show();
                 changed();
                 refresh();
@@ -308,23 +312,30 @@ final class SettingsController {
         wallpaperInterval = choices.getInt(Config.WALLPAPER_INTERVAL_KEY, 0);
         renderWallpaperInline();
         List<File> favourites = WallpaperFavorites.files(a);
-        wallpaperFavoritesText.setText(a.getString(R.string.wallpaper_favorites_state, favourites.size()));
-        loadFavouriteThumb(favourites);
+        // 数量把静态图片和动态视频一起算，动态壁纸也能收藏后这里要立刻看得出来。
+        wallpaperFavoritesText.setText(
+                a.getString(R.string.wallpaper_favorites_state, WallpaperFavorites.count(a)));
+        loadFavouriteThumb(favourites, WallpaperFavorites.videos(a));
     }
 
-    /** 胶囊预览：取收藏列表里的第一张作为缩略图；无收藏时隐藏胶囊。 */
-    private void loadFavouriteThumb(List<File> favourites) {
-        if (favourites == null || favourites.isEmpty()) {
-            wallpaperFavoritesThumb.setVisibility(View.GONE);
+    /** 胶囊预览：优先取第一张静态图；只有动态收藏时也留一个占位，别让胶囊凭空消失。 */
+    private void loadFavouriteThumb(List<File> favourites, List<String> clips) {
+        if (favourites != null && !favourites.isEmpty()) {
+            Bitmap bmp = decodeSampled(favourites.get(0), 152, 76);
+            if (bmp != null) {
+                wallpaperFavoritesThumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                wallpaperFavoritesThumb.setImageBitmap(bmp);
+                wallpaperFavoritesThumb.setVisibility(View.VISIBLE);
+                return;
+            }
+        }
+        if (clips != null && !clips.isEmpty()) {
+            wallpaperFavoritesThumb.setImageResource(R.drawable.ic_star_filled);
+            wallpaperFavoritesThumb.setScaleType(ImageView.ScaleType.CENTER);
+            wallpaperFavoritesThumb.setVisibility(View.VISIBLE);
             return;
         }
-        Bitmap bmp = decodeSampled(favourites.get(0), 152, 76);
-        if (bmp == null) {
-            wallpaperFavoritesThumb.setVisibility(View.GONE);
-            return;
-        }
-        wallpaperFavoritesThumb.setImageBitmap(bmp);
-        wallpaperFavoritesThumb.setVisibility(View.VISIBLE);
+        wallpaperFavoritesThumb.setVisibility(View.GONE);
     }
 
     /** 把壁纸文件按目标尺寸采样解码，避免大图直接进内存。 */
