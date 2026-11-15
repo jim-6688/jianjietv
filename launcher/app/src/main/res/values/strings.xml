@@ -71,6 +71,9 @@
     <string name="wallpaper_dynamic_on">Dynamic wallpaper (online)</string>
     <string name="wallpaper_dynamic_off">Dynamic wallpaper off</string>
     <string name="wallpaper_theme_default">Theme default</string>
+    <string name="wallpaper_type">Wallpaper type</string>
+    <string name="wallpaper_choose_image">Choose image</string>
+    <string name="wallpaper_dynamic_active">Dynamic wallpaper (online) is on</string>
     <string name="wallpaper_interval_label">Rotation interval</string>
     <string name="wallpaper_interval_1h">1 hour</string>
     <string name="wallpaper_interval_1d">1 day</string>
