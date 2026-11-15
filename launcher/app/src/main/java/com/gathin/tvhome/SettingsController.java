@@ -8,10 +8,13 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.GradientDrawable;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -56,9 +59,12 @@ final class SettingsController {
     /** 当前生效的透明度（可能来自主题），点击同一档时不重复写预置。 */
     private int dockOpacity;
     private LinearLayout wallpaperInline;
-    private View wallpaperFavoritesChoice;
     private TextView wallpaperFavoritesText;
-    private ImageView wallpaperFavoritesThumb;
+    private LinearLayout wallpaperFavoritesGrid;
+    /** 缩略图按显示顺序排好；重建后把焦点还给原来聚焦的那一格。 */
+    private final List<View> favouriteCells = new ArrayList<>();
+    /** 收藏缩略图每排两张（面板可用宽约 376dp，一张 16:9 的预览才看得清画面）。 */
+    private static final int COLUMNS = 2;
     /** 桌面设置里选的轮换间隔（分钟），0 表示立即生效（固定不动）。 */
     private int wallpaperInterval;
 
@@ -112,10 +118,8 @@ final class SettingsController {
 
         wallpaperInterval = choices.getInt(Config.WALLPAPER_INTERVAL_KEY, 0);
         wallpaperInline = view.findViewById(R.id.wallpaperInline);
-        wallpaperFavoritesChoice = view.findViewById(R.id.wallpaperFavoritesChoice);
         wallpaperFavoritesText = view.findViewById(R.id.wallpaperFavoritesText);
-        wallpaperFavoritesThumb = view.findViewById(R.id.wallpaperFavoritesThumb);
-        wallpaperFavoritesChoice.setOnClickListener(v -> showFavourites());
+        wallpaperFavoritesGrid = view.findViewById(R.id.wallpaperFavoritesGrid);
         // 影视源：在同一个右侧抽屉里换页，不另开窗口。
         view.findViewById(R.id.filmSourcesChoice).setOnClickListener(v -> host.openSources());
         refresh();
@@ -124,12 +128,6 @@ final class SettingsController {
     /** 抽屉滑入后再把焦点交给第一个可选项。 */
     void focusFirst(Config config) {
         if (appCountChoices[0] != null) appCountChoices[0].requestFocus();
-    }
-
-    /** The same favourites list the Home star button opens, kept in WallpaperFavorites. */
-    private void showFavourites() {
-        Runnable changedAndRefresh = () -> { changed(); refresh(); };
-        WallpaperFavorites.showPicker(a, changedAndRefresh, changedAndRefresh);
     }
 
     /**
@@ -337,30 +335,163 @@ final class SettingsController {
         wallpaperInterval = choices.getInt(Config.WALLPAPER_INTERVAL_KEY, 0);
         renderWallpaperInline();
         List<File> favourites = WallpaperFavorites.files(a);
+        List<String> clips = WallpaperFavorites.videos(a);
         // 数量把静态图片和动态视频一起算，动态壁纸也能收藏后这里要立刻看得出来。
         wallpaperFavoritesText.setText(
-                a.getString(R.string.wallpaper_favorites_state, WallpaperFavorites.count(a)));
-        loadFavouriteThumb(favourites, WallpaperFavorites.videos(a));
+                a.getString(R.string.wallpaper_favorites_state, favourites.size() + clips.size()));
+        renderFavourites(favourites, clips);
     }
 
-    /** 胶囊预览：优先取第一张静态图；只有动态收藏时也留一个占位，别让胶囊凭空消失。 */
-    private void loadFavouriteThumb(List<File> favourites, List<String> clips) {
-        if (favourites != null && !favourites.isEmpty()) {
-            Bitmap bmp = decodeSampled(favourites.get(0), 152, 76);
-            if (bmp != null) {
-                wallpaperFavoritesThumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                wallpaperFavoritesThumb.setImageBitmap(bmp);
-                wallpaperFavoritesThumb.setVisibility(View.VISIBLE);
-                return;
-            }
-        }
-        if (clips != null && !clips.isEmpty()) {
-            wallpaperFavoritesThumb.setImageResource(R.drawable.ic_star_filled);
-            wallpaperFavoritesThumb.setScaleType(ImageView.ScaleType.CENTER);
-            wallpaperFavoritesThumb.setVisibility(View.VISIBLE);
+    /** 收藏直接平铺成缩略图：静态图用画面本身，动态片用星标加片名，一眼看出是哪一张。 */
+    private void renderFavourites(List<File> stills, List<String> clips) {
+        int focused = favouriteCells.indexOf(wallpaperFavoritesGrid.findFocus());
+        favouriteCells.clear();
+        wallpaperFavoritesGrid.removeAllViews();
+
+        if (stills.isEmpty() && clips.isEmpty()) {
+            TextView empty = new TextView(a);
+            empty.setText(R.string.wallpaper_favorites_empty);
+            empty.setTextColor(0xFFACB8C1);
+            empty.setTextSize(13);
+            wallpaperFavoritesGrid.addView(empty);
             return;
         }
-        wallpaperFavoritesThumb.setVisibility(View.GONE);
+
+        String chosenStill = WallpaperFavorites.selected(a);
+        String chosenClip = WallpaperFavorites.selectedVideo(a);
+        LinearLayout row = null;
+        int inRow = 0;
+        for (File file : stills) {
+            if (inRow == 0) {
+                row = gridRow();
+                wallpaperFavoritesGrid.addView(row);
+            }
+            row.addView(stillCell(file, file.getName().equals(chosenStill)));
+            inRow = (inRow + 1) % COLUMNS;
+        }
+        for (String url : clips) {
+            if (inRow == 0) {
+                row = gridRow();
+                wallpaperFavoritesGrid.addView(row);
+            }
+            row.addView(clipCell(url, url.equals(chosenClip)));
+            inRow = (inRow + 1) % COLUMNS;
+        }
+        // 最后一排没排满时补空位，否则剩下几张会被平分拉宽。
+        if (row != null && inRow != 0) {
+            for (int i = inRow; i < COLUMNS; i++) row.addView(new View(a), cellParams());
+        }
+
+        TextView hint = new TextView(a);
+        hint.setText(R.string.wallpaper_favorites_grid_hint);
+        hint.setTextColor(0xFF8FA0AD);
+        hint.setTextSize(12);
+        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        hintLp.topMargin = dp(10);
+        hint.setLayoutParams(hintLp);
+        wallpaperFavoritesGrid.addView(hint);
+
+        if (focused >= 0 && focused < favouriteCells.size())
+            favouriteCells.get(focused).requestFocus();
+    }
+
+    private LinearLayout gridRow() {
+        LinearLayout row = new LinearLayout(a);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = wallpaperFavoritesGrid.getChildCount() == 0 ? 0 : dp(8);
+        row.setLayoutParams(lp);
+        return row;
+    }
+
+    /** 16:9 的格子，两张平分一排。 */
+    private LinearLayout.LayoutParams cellParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(100), 1);
+        lp.setMargins(dp(4), 0, dp(4), 0);
+        return lp;
+    }
+
+    /** 一格缩略图：圆角卡片，正在用的那张换成金色描边。 */
+    private FrameLayout cell(boolean chosen) {
+        FrameLayout cell = new FrameLayout(a);
+        cell.setLayoutParams(cellParams());
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(9));
+        bg.setColor(0xFF14161B);
+        bg.setStroke(dp(chosen ? 2 : 1), chosen ? 0xFFC9A96E : 0x33FFFFFF);
+        cell.setBackground(bg);
+        cell.setClipToOutline(true);
+        cell.setFocusable(true);
+        cell.setClickable(true);
+        favouriteCells.add(cell);
+        return cell;
+    }
+
+    private FrameLayout stillCell(File file, boolean chosen) {
+        FrameLayout cell = cell(chosen);
+        ImageView picture = new ImageView(a);
+        picture.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        Bitmap bmp = decodeSampled(file, dp(200), dp(112));
+        if (bmp != null) picture.setImageBitmap(bmp);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.setMargins(dp(2), dp(2), dp(2), dp(2));
+        cell.addView(picture, lp);
+        cell.setOnClickListener(v -> {
+            WallpaperFavorites.select(a, file.getName());
+            Toast.makeText(a, R.string.wallpaper_favorite_applied, Toast.LENGTH_SHORT).show();
+            changed();
+            refresh();
+        });
+        cell.setOnLongClickListener(v -> {
+            WallpaperFavorites.remove(a, file);
+            Toast.makeText(a, R.string.wallpaper_favorite_deleted, Toast.LENGTH_SHORT).show();
+            changed();
+            refresh();
+            return true;
+        });
+        return cell;
+    }
+
+    /** 动态片没有本地画面，用星标加片名代替，仍然一眼能分出是哪一段。 */
+    private FrameLayout clipCell(String url, boolean chosen) {
+        FrameLayout cell = cell(chosen);
+        ImageView star = new ImageView(a);
+        star.setImageResource(R.drawable.ic_star_filled);
+        cell.addView(star, new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER));
+
+        TextView name = new TextView(a);
+        name.setText(WallpaperFavorites.videoLabel(url));
+        name.setTextColor(0xFFC9A96E);
+        name.setTextSize(11);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
+        lp.setMargins(dp(6), 0, dp(6), dp(5));
+        cell.addView(name, lp);
+
+        cell.setOnClickListener(v -> {
+            WallpaperFavorites.selectVideo(a, url);
+            Toast.makeText(a, R.string.wallpaper_favorite_applied, Toast.LENGTH_SHORT).show();
+            changed();
+            refresh();
+        });
+        cell.setOnLongClickListener(v -> {
+            WallpaperFavorites.removeVideo(a, url);
+            Toast.makeText(a, R.string.wallpaper_favorite_deleted, Toast.LENGTH_SHORT).show();
+            changed();
+            refresh();
+            return true;
+        });
+        return cell;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * a.getResources().getDisplayMetrics().density);
     }
 
     /** 把壁纸文件按目标尺寸采样解码，避免大图直接进内存。 */

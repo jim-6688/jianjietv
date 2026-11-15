@@ -37,41 +37,23 @@
             android:textColor="#FFFFFFFF"
             android:textSize="34sp" />
 
-        <!-- 收藏壁纸：置于设置最上方，右侧胶囊预览当前收藏，点击进入壁纸列表。 -->
-        <LinearLayout
-            android:id="@+id/wallpaperFavoritesChoice"
+        <!-- 壁纸喜好：收藏的壁纸直接平铺缩略图，一眼看出是哪一张；点击即设为固定壁纸，长按移除。 -->
+        <TextView
+            android:id="@+id/wallpaperFavoritesText"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="18dp"
-            android:paddingEnd="18dp"
-            android:background="@drawable/settings_choice_bg"
-            android:focusable="true"
-            android:clickable="true">
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp"
+            android:singleLine="true"
+            android:ellipsize="end" />
 
-            <TextView
-                android:id="@+id/wallpaperFavoritesText"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="#FFFFFFFF"
-                android:textSize="18sp"
-                android:singleLine="true"
-                android:ellipsize="end" />
-
-            <ImageView
-                android:id="@+id/wallpaperFavoritesThumb"
-                android:layout_width="76dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="12dp"
-                android:scaleType="centerCrop"
-                android:background="@drawable/capsule_bg"
-                android:clipToOutline="true"
-                android:importantForAccessibility="no"
-                android:visibility="gone" />
-        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/wallpaperFavoritesGrid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical" />
 
         <!-- 桌面设置（分区小字标题已去掉，保留选项行） -->
         <TextView

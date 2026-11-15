@@ -200,5 +200,6 @@
     <string name="wallpaper_favorites_only_on">只轮换喜好：开</string>
     <string name="wallpaper_favorites_only_off">只轮换喜好：关</string>
     <string name="wallpaper_favorites_hint">选一项设为固定壁纸 · 长按移除 · 返回键关闭</string>
+    <string name="wallpaper_favorites_grid_hint">点缩略图设为固定壁纸 · 长按移除</string>
     <string name="wallpaper_favorite_video_item">动态 · %1$s</string>
 </resources>

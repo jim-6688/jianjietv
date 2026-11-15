@@ -107,6 +107,7 @@
     <string name="wallpaper_favorites_only_on">Favourites only: on</string>
     <string name="wallpaper_favorites_only_off">Favourites only: off</string>
     <string name="wallpaper_favorites_hint">Pick one to hold it on screen · long-press one to remove · Back closes</string>
+    <string name="wallpaper_favorites_grid_hint">Tap a thumbnail to hold it on screen · long-press one to remove</string>
     <string name="wallpaper_favorite_video_item">Video · %1$s</string>
     <string name="animations_state">Animations: %1$s</string>
     <string name="advanced_effects">Advanced effects</string>
