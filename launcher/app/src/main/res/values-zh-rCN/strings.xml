@@ -16,6 +16,16 @@
     <string name="wallpaper_state">壁纸：%1$s</string>
     <string name="wallpaper_none">无</string>
     <string name="wallpaper_applied">壁纸已更改</string>
+    <string name="desktop_settings">桌面设置</string>
+    <string name="app_count_label">应用数量</string>
+    <string name="wallpaper_settings">壁纸设置</string>
+    <string name="wallpaper_static">静态壁纸</string>
+    <string name="wallpaper_dynamic">动态壁纸</string>
+    <string name="wallpaper_mode">轮换方式</string>
+    <string name="wallpaper_immediate">立即生效</string>
+    <string name="wallpaper_24h">24 小时轮换</string>
+    <string name="wallpaper_dynamic_on">动态壁纸（在线）</string>
+    <string name="wallpaper_dynamic_off">关闭动态壁纸</string>
     <string name="wallpaper_theme_default">主题默认</string>
     <string name="wallpaper_interval_label">轮换间隔</string>
     <string name="wallpaper_interval_1h">1 小时</string>

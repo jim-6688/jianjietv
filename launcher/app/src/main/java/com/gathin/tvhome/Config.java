@@ -49,6 +49,10 @@ final class Config {
     static final String WALLPAPER_INTERVAL_KEY = "wallpaper_interval";
     static final String DOCK_OPACITY_KEY = "dock_opacity";
     static final String CLOCK_FORMAT_KEY = "clock_format";
+    /** On-TV choice for the dock's slot count (3..8); the desktop settings' "应用数量" writes it and beats the theme. */
+    static final String DOCK_COUNT_KEY = "dock_count";
+    /** On-TV choice to force the dynamic (video) wallpaper on; the wallpaper settings' "动态壁纸" writes it. */
+    static final String WALLPAPER_VIDEO_KEY = "wallpaper_video";
     /**
      * Counts the changes made in Launcher settings. Home remembers the count it was built with and rebuilds on
      * resume when it differs, however the settings were left (see MainActivity#onResume).
@@ -94,6 +98,17 @@ final class Config {
     final boolean animations;
     final boolean advancedEffects;
     final int rowsBelowDock;
+    /**
+     * Home holds the dock row and nothing else (config.xml dock_only): the tiles under it are gone, so no app icon
+     * ever sits outside the dock. Every other app is reached through the app library, whose hold menu puts one in a
+     * dock place. Still off during an edit session, which has to list the apps a place can take.
+     */
+    final boolean dockOnly;
+    /** Number of slots in the dock (config.xml dock_count): Home shows exactly this many apps in the band, the
+     * rest live in the app library. Needs dock_row. */
+    final int dockCount;
+    /** Names under the dock tiles (config.xml dock_show_names); off by default for a clean, artwork-only dock. */
+    final boolean dockShowNames;
     final boolean shamsiDate;
     /** Lunisolar date under the date (config.json lunar_date), computed for lunarUtcOffset hours east of UTC (-1: by locale). */
     final boolean lunarDate;
@@ -309,7 +324,7 @@ final class Config {
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly,
                    int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
                    boolean wallpaperVideoEnabled, String wallpaperVideoManifest,
-                   boolean wallpaperStillsEnabled, String wallpaperStillsManifest) {
+                   boolean wallpaperStillsEnabled, String wallpaperStillsManifest, boolean dockOnly, int dockCount, boolean dockShowNames) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -336,6 +351,9 @@ final class Config {
         this.inputUriScheme = inputUriScheme;
         this.columns = columns;
         this.rowsBelowDock = rowsBelowDock;
+        this.dockOnly = dockOnly;
+        this.dockCount = dockCount;
+        this.dockShowNames = dockShowNames;
         this.animations = animations;
         this.advancedEffects = advancedEffects;
         this.shamsiDate = shamsiDate;
@@ -487,6 +505,9 @@ final class Config {
         boolean openOnStartOnWake = res.getBoolean(R.bool.open_on_start_on_wake);
         boolean dockTitle = res.getBoolean(R.bool.dock_title);
         boolean dockRow = res.getBoolean(R.bool.dock_row);
+        boolean dockOnly = res.getBoolean(R.bool.dock_only);
+        int dockCount = res.getInteger(R.integer.dock_count);
+        boolean dockShowNames = res.getBoolean(R.bool.dock_show_names);
         boolean topMenu = res.getBoolean(R.bool.top_menu);
         boolean launcherSettingsButton = res.getBoolean(R.bool.launcher_settings_button);
         boolean reorderButton = res.getBoolean(R.bool.reorder_button);
@@ -604,6 +625,9 @@ final class Config {
             openOnStartOnWake = bool(json, "open_on_start_on_wake", openOnStartOnWake);
             dockTitle = bool(json, "dock_title", dockTitle);
             dockRow = bool(json, "dock_row", dockRow);
+            dockOnly = bool(json, "dock_only", dockOnly);
+            dockCount = integer(json, "dock_count", dockCount, 1, 12);
+            dockShowNames = bool(json, "dock_show_names", dockShowNames);
             topMenu = bool(json, "top_menu", topMenu);
             launcherSettingsButton = bool(json, "launcher_settings_button", launcherSettingsButton);
             reorderButton = bool(json, "reorder_button", reorderButton);
@@ -695,8 +719,13 @@ final class Config {
         else columns = AutoColumns.pick(AutoColumns.countApps(ctx));
         int chosenRows = choices.getInt(ROWS_BELOW_DOCK_KEY, rowsBelow);
         if (chosenRows >= 0 && chosenRows <= 3) rowsBelow = chosenRows;
-        animations = choices.getBoolean("animations", animations);
-        advancedEffects = choices.getBoolean("advanced_effects", advancedEffects);
+        // 桌面设置「应用数量」选过就用它（3..8），盖过主题；没选过时沿用主题/默认（dock_count）。
+        int chosenDock = choices.getInt(DOCK_COUNT_KEY, -1);
+        if (chosenDock >= 3 && chosenDock <= 8) dockCount = chosenDock;
+        // 动效与高级动效不再出现在设置里，按机器性能自动开关：低内存 / 小内存档的电视关掉，其余打开。
+        boolean lowPerf = isLowPerfDevice(ctx);
+        animations = !lowPerf;
+        advancedEffects = !lowPerf;
         File wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
         if (wallpaper != null && !(wallpaper.isFile() && wallpaper.length() > 0)) wallpaper = null;
         // A theme can also switch the wallpaper off while the file is still there.
@@ -789,6 +818,15 @@ final class Config {
             skyIntensity = 0;
             wallpaperVideoEnabled = false;
         }
+        // 桌面设置里选了「动态壁纸」就强制开视频壁纸，盖过上面的静态/收藏来源；选了静态壁纸会在设置页清掉这个标记。
+        if (choices.getBoolean(WALLPAPER_VIDEO_KEY, false)) {
+            wallpaperVideoEnabled = true;
+            wallpaperEnabled = true;
+            wallpaper = null;
+            wallpapers.clear();
+            rotationMinutes = Math.max(rotationMinutes, 10);
+            skyIntensity = 0;
+        }
         // 照片壁纸统一压暗一点：白色文字、图标在任何图上都要看得清（主题给的 wallpaper_dim 更高时以它为准）。
         if (wallpaperEnabled) wallpaperDim = Math.max(wallpaperDim, 22);
         // A festive skin comes only from a theme; config.xml has no festival. seasonal_skin names one the same way
@@ -811,7 +849,8 @@ final class Config {
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
-                wallpaperVideoEnabled, wallpaperVideoManifest, wallpaperStillsEnabled, wallpaperStillsManifest);
+                wallpaperVideoEnabled, wallpaperVideoManifest, wallpaperStillsEnabled, wallpaperStillsManifest,
+                dockOnly && dockRow, dockCount, dockShowNames);
     }
 
     /**
@@ -867,6 +906,23 @@ final class Config {
     /** The dock band opacity chosen in Launcher settings, or the theme's when none (or an out-of-range one) is saved. */
     static int chosenDockOpacity(int chosen, int theme) {
         return chosen >= 30 && chosen <= 100 ? chosen : theme;
+    }
+
+    /** A weak TV (low-RAM device, or a small heap): animations and advanced effects are off by default there. */
+    static boolean isLowPerfDevice(Context ctx) {
+        if (ctx == null) return false;
+        try {
+            android.app.ActivityManager am =
+                    (android.app.ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT
+                        && am.isLowRamDevice()) return true;
+                if (am.getMemoryClass() <= 64) return true;
+            }
+        } catch (Exception ignored) {
+            // missing service or unsupported API: treat as a normal device
+        }
+        return false;
     }
 
     private static String fileStamp(File file) {

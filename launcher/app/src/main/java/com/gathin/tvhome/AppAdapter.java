@@ -189,7 +189,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** Reorder mode: no empty dock slots, so every position holds a tile that can move. */
     private boolean reordering;
     private final TileListener listener;
-    private final int dockSize;
+    private int dockSize;
     /** config dock_row: false makes the dock apps the first tiles of one plain grid (names shown, no empty slots). */
     private final boolean dockRow;
     /** config single_row: tiles sit in one sideways row, each as wide as a grid column would be. */
@@ -198,6 +198,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final float restNameAlpha;
     /** config always_show_names: names show under the tile even when not focused (we scope this to the dock row). */
     private final boolean alwaysShowNames;
+    /** config dock_show_names: the dock tiles show their names; off by default for a clean, artwork-only dock. */
+    private final boolean dockShowNames;
     /** cinematic_home: only then does a launch record the last-opened app the shelf uses. */
     private final boolean cinematic;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
@@ -230,7 +232,15 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean uniformTiles;
     /** Packages drawn from their icon and name even when they have a banner (config.xml icon_tiles). */
     private final Set<String> iconTiles;
+    /** config dock_only: items hold the dock row only, all keeps every tile an edit session can pick from. */
+    private final boolean dockOnly;
     private final List<Entry> items = new ArrayList<>();
+    /**
+     * Every tile built at the last reload, the ones dock_only leaves off Home included: a key looked up by package
+     * (the library's "Add to dock") has to be found before it holds a place, and an empty list keeps the two lists
+     * the same object's contents without the extra allocation.
+     */
+    private List<Entry> all = Collections.emptyList();
 
     AppAdapter(Context ctx, TileListener listener, int dockSize, Config cfg) {
         this.ctx = ctx;
@@ -247,11 +257,13 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.reducedMotion = cfg.reducedMotion;
         this.focusOvershoot = cfg.focusOvershoot;
         this.rowsBelowDock = cfg.rowsBelowDock;
+        this.dockOnly = cfg.dockOnly;
         this.dockTitle = cfg.dockTitle;
         this.dockRow = cfg.dockRow;
         this.singleRow = cfg.singleRow;
-        this.restNameAlpha = cfg.alwaysShowNames ? 0.75f : 0f;
+        this.restNameAlpha = cfg.dockShowNames ? 0.75f : 0f;
         this.alwaysShowNames = cfg.alwaysShowNames;
+        this.dockShowNames = cfg.dockShowNames;
         this.cinematic = cfg.cinematicHome;
         this.launchActions = cfg.launchActions;
         this.iconTiles = new HashSet<>(Arrays.asList(ctx.getResources().getStringArray(R.array.icon_tiles)));
@@ -363,9 +375,27 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             fresh.add(docked + i, new Entry(Entry.EMPTY, "", new ComponentName(ctx, "empty-dock-slot-" + i),
                     null, null, null, 0));
         }
+        // dock_only: Home is the dock row and nothing else, so no icon is ever drawn outside the band. The tiles
+        // past that row are not on Home at all; all keeps them for keyForPackage, and an edit session (reorder,
+        // Add to dock) lists them again, since picking the app for a place is what the session is for.
+        all = fresh;
         items.clear();
-        items.addAll(fresh);
+        // dock_only: the row holds exactly the owner's dock_count slots (应用数量). Apps added from the library
+        // replace a slot rather than grow the row, so there are never more docked than slots; if somehow there
+        // are, the extra ones simply stay out of Home until the count is raised or they are replaced.
+        int slots = dockSize;
+        items.addAll(dockOnly && !reordering ? fresh.subList(0, Math.min(fresh.size(), slots)) : fresh);
         notifyDataSetChanged();
+    }
+
+    /** The number of dock slots the row is laid out for (dock_count, grown to the docked count when they differ). */
+    void setDockSize(int size) {
+        this.dockSize = size;
+    }
+
+    /** How many tiles are in the dock at the last reload (dock_apps plus the slots they filled). */
+    int dockedCount() {
+        return docked;
     }
 
     /** icon_tiles: the app's icon centred on a dark banner-shaped tile, for apps whose own banner crops badly. */
@@ -415,6 +445,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** Lets go of every tile and its artwork (Home is in the background and memory is short). */
     void clear() {
         items.clear();
+        all = Collections.emptyList();
         notifyDataSetChanged();
     }
 
@@ -493,13 +524,17 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // and uniform tiles keep the artwork clean and use the line under the card for the name.
         boolean dockKind = DockSlots.inDockRow(dockRow, singleRow, position, dockSize);
         boolean namedInside = e.banner == null && !uniformTiles;
-        h.name.setVisibility(namedInside ? View.INVISIBLE : View.VISIBLE);
+        // The dock shows no name under its tiles unless dock_show_names is on, and then not even on focus: a
+        // clean, artwork-only dock. The grid still names its tiles on focus through always_show_names.
+        boolean showName = !namedInside && (dockKind ? dockShowNames : true);
+        h.name.setVisibility(showName ? View.VISIBLE : View.GONE);
         h.inDock = dockKind;
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
-        // Names stay visible on the dock row only; the grid shows them on focus as before (#dock names).
-        float rest = (alwaysShowNames && dockKind) ? 0.75f : 0f;
+        // Dock names: dock_show_names keeps them dimmed, otherwise hidden. Grid names: only on focus.
+        float rest = (dockKind ? dockShowNames : alwaysShowNames) ? (dockKind ? 0.75f : 0f) : 0f;
+        float focusAlpha = (dockKind && !dockShowNames) ? 0f : 1f;
         h.restNameAlpha = rest;
-        h.name.setAlpha(focused ? 1f : rest);
+        h.name.setAlpha(focused ? focusAlpha : rest);
         h.card.setScaleX(focused && animations ? focusScale() : 1f);
         h.card.setScaleY(focused && animations ? focusScale() : 1f);
         h.card.setTranslationY(focused && advancedEffects && !dockKind ? -4f * ctx.getResources().getDisplayMetrics().density : 0f);
@@ -607,9 +642,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /**
      * The tile key of this package, or null when it has none. Routes "Add to dock" from the app library, where the
      * catalogue picks one entry per package and the tile may have been built from another (leanback, or LAUNCHER).
+     * Looks at every tile built at the last reload, not only the ones on Home: with dock_only the app being added
+     * has no tile on Home until it takes a place, and its key is what the place is chosen for.
      */
     String keyForPackage(String pkg) {
         if (pkg == null) return null;
+        for (Entry entry : all) {
+            if (pkg.equals(entry.pkg)) return entry.component.flattenToShortString();
+        }
         for (Entry entry : items) {
             if (pkg.equals(entry.pkg)) return entry.component.flattenToShortString();
         }

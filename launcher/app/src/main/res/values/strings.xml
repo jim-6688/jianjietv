@@ -60,6 +60,16 @@
     <string name="wallpaper_state">Wallpaper: %1$s</string>
     <string name="wallpaper_none">None</string>
     <string name="wallpaper_applied">Wallpaper changed</string>
+    <string name="desktop_settings">Desktop</string>
+    <string name="app_count_label">App count</string>
+    <string name="wallpaper_settings">Wallpaper</string>
+    <string name="wallpaper_static">Static</string>
+    <string name="wallpaper_dynamic">Dynamic</string>
+    <string name="wallpaper_mode">Rotation</string>
+    <string name="wallpaper_immediate">Immediate</string>
+    <string name="wallpaper_24h">24-hour rotation</string>
+    <string name="wallpaper_dynamic_on">Dynamic wallpaper (online)</string>
+    <string name="wallpaper_dynamic_off">Dynamic wallpaper off</string>
     <string name="wallpaper_theme_default">Theme default</string>
     <string name="wallpaper_interval_label">Rotation interval</string>
     <string name="wallpaper_interval_1h">1 hour</string>

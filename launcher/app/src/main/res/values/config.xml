@@ -286,6 +286,21 @@
          shelf above it. false makes the dock apps simply the first tiles of one plain grid (still in dock_apps
          order, no empty slots), with names under every tile and the glow behind every focused tile. -->
     <bool name="dock_row">true</bool>
+    <!-- Home holds the dock row and nothing else: the dock apps sit in the band, and no tile is drawn below it, so
+         no app icon ever stands outside the dock. The other apps live in the app library (the top bar's grid button):
+         hold OK on one and "Add to dock" puts it in a place, exactly as a dock tile's own menu does. The extra rows
+         come back only during those edit sessions, which have to list the apps a place can take. Needs dock_row;
+         single_row already keeps every app in the dock's row. A theme can set "dock_only": false to list every app
+         on Home again. -->
+    <bool name="dock_only">true</bool>
+    <!-- The number of slots in the dock (config.xml dock_count): Home shows exactly this many apps in the band,
+         and the rest live in the app library, where holding OK puts one in a place or replaces one. Needs dock_row.
+         A theme can set "dock_count": 6 for a fuller dock; the dock never holds more apps than this, and an app
+         past it stays in the library. -->
+    <integer name="dock_count">5</integer>
+    <!-- Names under the dock tiles (config.xml dock_show_names). Off by default: the dock shows only the artwork,
+         like Apple TV. On shows each dock tile's name dimmed until focused, as always_show_names does for the grid. -->
+    <bool name="dock_show_names">false</bool>
     <!-- Inputs, Wi-Fi and Settings folded into one round gear at the top right, like Google TV: OK drops a menu
          with the three, hold OK keeps the launcher menu. Off by default; a theme can set "top_menu": true. -->
     <bool name="top_menu">false</bool>

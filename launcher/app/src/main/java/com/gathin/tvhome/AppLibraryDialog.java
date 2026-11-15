@@ -88,6 +88,12 @@ final class AppLibraryDialog {
     private final boolean selectionMode;
     /** library_ok_opens without app_library_selection: OK opens every app, Add to Home is in the hold menu. */
     private final boolean okOpens;
+    /**
+     * Whether Home can hold a shortcut for an app (hold OK: Add to Home / Remove from Home). False with dock_only,
+     * where Home is the dock row and a place is the only way in: the hold menu offers Add to dock instead, and
+     * adding a shortcut would put nothing on screen.
+     */
+    private final boolean homeRow;
     private final boolean animations;
     private final boolean rtl;
     private TextView instructions;
@@ -166,13 +172,14 @@ final class AppLibraryDialog {
         void add(ResolveInfo app);
     }
 
-    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, boolean okOpens, Predicate<String> onHome, DockAction dockAction, Runnable changed, Runnable dismissed, Set<String> excludedApps) {
+    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, boolean okOpens, boolean homeRow, Predicate<String> onHome, DockAction dockAction, Runnable changed, Runnable dismissed, Set<String> excludedApps) {
         this.activity = activity;
         this.animations = animations;
         this.rtl = activity.getResources().getBoolean(R.bool.rtl_app_grid);
         this.reducedMotion = reducedMotion;
         this.selectionMode = selectionMode;
         this.okOpens = okOpens && !selectionMode;
+        this.homeRow = homeRow;
         this.onHome = onHome;
         this.dockAction = dockAction;
         this.changed = changed;
@@ -630,7 +637,7 @@ final class AppLibraryDialog {
         // 没有启动入口的卡片不会出现在 Home 上，所以不给「添加到主页/从主页移除」这一行。
         boolean entry = launchable(app);
         boolean home = entry && onHome.test(pkg);
-        if (entry) {
+        if (entry && homeRow) {
             addAction(rows, home ? R.string.library_remove_shortcut : R.string.library_add_home,
                     () -> changeHome(app, !home));
         }
@@ -780,7 +787,7 @@ final class AppLibraryDialog {
                     return;
                 }
                 boolean onHomeNow = onHome.test(pkg);
-                if (LibraryApps.okOpens(selectionMode, okOpens, onHomeNow)) open(app);
+                if (LibraryApps.okOpens(selectionMode, okOpens, onHomeNow) || !homeRow) open(app);
                 else changeHome(app, !onHomeNow);
             });
             holder.itemView.setOnLongClickListener(selectionMode ? null : v -> { showActions(app, v); return true; });
