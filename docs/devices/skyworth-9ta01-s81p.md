@@ -197,6 +197,35 @@ adb shell 'cmd package query-activities --brief -a android.intent.action.MAIN -c
 程序坞本身没有独立数据：它就是桌面前 `COLUMNS` 个格子（`AppAdapter` 的 `dockFilled()` + `order.txt` 的
 `docked`），所以“进程序坞”必须先有桌面卡片，这也是之前只能从桌面上已有卡片里挑的原因。
 
+## 断网开机停在原生桌面：是开机时序，不是守护被断网
+
+现象：**有网**时断电开机正常进我们的桌面；**拔掉网线/路由器没网**时断电开机，最后停在酷开原生桌面。
+
+排查结论（无需抓包即可确定）：
+
+- `com.jim.tvhomehijack`（开机守护）1.0 的 `classes.dex` 里没有任何网络类，全部引用只有
+  `Activity` / `View` / `TextView` / `Log` / `Intent`；它的两个入口是 `BootReceiver`（`BOOT_COMPLETED`）和
+  `HijackService`（无障碍窗口事件转 `startActivity` 回桌面）。两者都不需要网络，所以「没网 → 守护不工作」
+  不是权限或联网问题。
+- 真正的原因是桌面这边**只发了一次**：`HomeKeyService` 在开机窗口内只 `postDelayed(800 ms)` 打开一次 Home。
+  没网时酷开先停在「网络未连接」页（不是回答 HOME 的那个 activity），等它自己收场、原生桌面回来时，
+  早就过了那 800 ms；而 `stock_home_redirect` 走的 `queryIntentActivities` 在这台机上取不到原厂 HOME
+  activity，集合是空的，重定向也就没有生效点。
+- 另外，普通 App **不能**替守护发 `BOOT_COMPLETED`（受保护广播，非系统 uid 直接 `SecurityException`），
+  所以「桌面替守护广播一次」这条路走不通，只能在桌面侧兜底。
+
+修复（`launcher`，不依赖网络、不依赖守护在不在）：
+
+- `power_on_home_always` 从一击改成链式重试：0.8 / 4 / 10 / 22 / 45 秒各试一次，**直到我们自己的窗口
+  成为前台**（`homeInFront`，由窗口事件置位）或用户按了键（`powerOnUntil` 清零）就停。断网开机厂商界面
+  晚十几秒才收场也能被拉回来。
+- `stock_home_redirect` 增加**按包名**命中：原厂包的任何窗口（含开机那张网络提示页）都算，不再只认
+  回答 HOME 的那个 activity 类名。
+
+复验方法（需要真机、且这次要**断网**）：拔掉电视网线 → 断电 → 通电 → 只按一次遥控器电源键 →
+等 60–90 秒，看是否回到我们的桌面；`dumpsys window | grep mCurrentFocus` 应是
+`com.gathin.tvhome/.MainActivity`。断网时 ADB 连不上，属正常，恢复网络后再回读设置。
+
 ## 恢复与已知代价
 
 - 代价：酷开的**息屏显示（AOD）不再出现**。恢复（恢复后开机可能又变黑屏）：

@@ -220,9 +220,11 @@ public class HomeKeyService extends AccessibilityService {
             screenOnReceiver = null;
             powerOnUntil = 0;
         }
-        // home_key_service.xml subscribes to no events, so the redirects ask for window changes only when one is on.
+        // home_key_service.xml subscribes to no events, so the redirects ask for window changes only when one is
+        // on. power_on_home_always needs them too: they are what tells the chain Home is already in front.
         AccessibilityServiceInfo info = getServiceInfo();
-        if (info != null && (!stockHome.isEmpty() || !powerOnLiveTv.isEmpty() || watchFront)) {
+        if (info != null && (!stockHome.isEmpty() || !stockHomePackage.isEmpty() || !powerOnLiveTv.isEmpty()
+                || powerOnAlways || watchFront)) {
             info.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
             setServiceInfo(info);
         }
@@ -305,6 +307,8 @@ public class HomeKeyService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        // power_on_home_always: once this app's own window is the one in front, the chain has nothing left to do.
+        if (event.getPackageName() != null) homeInFront = getPackageName().contentEquals(event.getPackageName());
         // app_keys "front:" entries: only activities count, so a toast or the volume bar doesn't change the app in front.
         if ((!frontAppKeys.isEmpty() || !frontAppScancodes.isEmpty())
                 && event.getPackageName() != null && event.getClassName() != null) {
@@ -324,6 +328,11 @@ public class HomeKeyService extends AccessibilityService {
         // stock_home_redirect: the firmware turned the stock launcher back on and its home screen came up.
         CharSequence cls = event.getClassName();
         if (!stockHome.isEmpty() && cls != null && stockHome.contains(cls.toString())) openHome();
+        // stock_home_redirect, by package: the query above can come back empty (MATCH_DISABLED_COMPONENTS misses
+        // a home activity the firmware renamed), and the firmware's own boot screen — the "not connected" page a
+        // set with no network sits on — is not the activity that answers HOME either, so neither would redirect.
+        if (!stockHomePackage.isEmpty() && event.getPackageName() != null
+                && stockHomePackage.contentEquals(event.getPackageName())) openHome();
     }
 
     /** How long power_on_home stays armed after the screen turns on without a reboot. */
@@ -333,14 +342,17 @@ public class HomeKeyService extends AccessibilityService {
     private void armPowerOnHome() {
         if (SystemClock.elapsedRealtime() < BOOT_WINDOW_MS) {
             powerOnUntil = BOOT_WINDOW_MS;
-            if (powerOnAlways) handler.postDelayed(this::homeAtPowerOn, POWER_ON_ALWAYS_DELAY_MS);
+            // A fresh boot: no window event for this app has arrived yet, and the firmware home may be the one
+            // on screen, so the chain has to try at least once before it can tell.
+            homeInFront = false;
+            if (powerOnAlways) startPowerOnChain();
         }
         if (screenOnReceiver != null) return;
         screenOnReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 powerOnUntil = SystemClock.elapsedRealtime() + SCREEN_ON_WINDOW_MS;
-                if (powerOnAlways) handler.postDelayed(HomeKeyService.this::homeAtPowerOn, POWER_ON_ALWAYS_DELAY_MS);
+                if (powerOnAlways) startPowerOnChain();
             }
         };
         registerReceiver(screenOnReceiver, new IntentFilter(Intent.ACTION_SCREEN_ON));
@@ -349,9 +361,37 @@ public class HomeKeyService extends AccessibilityService {
     /** power_on_home_always: after the firmware has brought its last source back (Philips: within 0.5 s). */
     static final long POWER_ON_ALWAYS_DELAY_MS = 800L;
 
+    /**
+     * power_on_home_always: when Home is opened again inside the armed window, measured from the arm.
+     *
+     * One shot is not enough on a TV that boots slowly. A set with no network can sit on its own "not connected"
+     * page for a minute, and the firmware home that came up before Android bound this service takes the screen
+     * back once that page is dismissed (Skyworth 9TA01, 断电开机 without a cable). The chain stops by itself: a
+     * key press disarms {@code powerOnUntil}, and a window event with this app in front sets {@code homeInFront},
+     * so a TV the owner is already using is left alone.
+     */
+    static final long[] POWER_ON_ATTEMPTS_MS = {POWER_ON_ALWAYS_DELAY_MS, 4000, 10000, 22000, 45000};
+
+    /** The chain in flight: a newer arm (screen-on after a boot arm) replaces the older one. */
+    private int powerOnChain;
+    /** The attempt the chain in flight is on, an index into {@link #POWER_ON_ATTEMPTS_MS}. */
+    private int powerOnStep;
+    /** A window event showed this app in front, so power_on_home_always has nothing left to send. */
+    private boolean homeInFront;
+
+    private void startPowerOnChain() {
+        final int chain = ++powerOnChain;
+        powerOnStep = 0;
+        handler.postDelayed(() -> stepPowerOn(chain), POWER_ON_ATTEMPTS_MS[0]);
+    }
+
     /** power_on_home_always: Home, unless a key was pressed since the screen came on (the user has the TV). */
-    private void homeAtPowerOn() {
-        if (stillArmed(SystemClock.elapsedRealtime(), powerOnUntil)) openHome();
+    private void stepPowerOn(int chain) {
+        if (chain != powerOnChain) return;
+        if (!homeInFront && stillArmed(SystemClock.elapsedRealtime(), powerOnUntil)) openHome();
+        if (++powerOnStep >= POWER_ON_ATTEMPTS_MS.length) return;
+        long gap = POWER_ON_ATTEMPTS_MS[powerOnStep] - POWER_ON_ATTEMPTS_MS[powerOnStep - 1];
+        handler.postDelayed(() -> stepPowerOn(chain), gap);
     }
 
     static boolean stillArmed(long now, long armedUntil) {
