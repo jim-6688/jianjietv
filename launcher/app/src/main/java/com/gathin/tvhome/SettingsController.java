@@ -225,7 +225,7 @@ final class SettingsController {
         return t;
     }
 
-    /** 静态壁纸：本地壁纸目录的图片、当前壁纸、无（不再放「主题默认」选框）。 */
+    /** 静态壁纸：本地壁纸目录的图片、当前壁纸（「主题默认」「无」选框均已去掉）。 */
     private void addStaticItems(Context c, LinearLayout col) {
         File dir = Config.dir(c);
         List<File> images = new ArrayList<>();
@@ -238,23 +238,19 @@ final class SettingsController {
         }
         List<String> names = new ArrayList<>();
         for (File f : images) names.add(f.getName());
-        names.add(a.getString(R.string.wallpaper_none));
         String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         boolean videoOn = choices.getBoolean(Config.WALLPAPER_VIDEO_KEY, false);
-        boolean usingDefault = !videoOn && current == null;
+        // 旧版本可能残留 "none"（该选项已去掉），按「未指定」处理，避免所有图片都不高亮。
+        boolean usingDefault = !videoOn && (current == null || "none".equals(current));
         for (int i = 0; i < names.size(); i++) {
             final String name = names.get(i);
-            final boolean isNone = i == names.size() - 1;
             final boolean isSingle = singleIsActive && i == 0;
             TextView item = pickerItem(c, name);
-            boolean selected = isNone ? "none".equals(current)
-                    : usingDefault ? isSingle
-                    : name.equals(current);
+            boolean selected = usingDefault ? isSingle : name.equals(current);
             item.setSelected(selected);
             item.setOnClickListener(v -> {
                 choices.edit().remove(Config.WALLPAPER_VIDEO_KEY).apply();
-                if (isNone) choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, "none").apply();
-                else choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, name).apply();
+                choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, name).apply();
                 Toast.makeText(a, R.string.wallpaper_applied, Toast.LENGTH_SHORT).show();
                 changed();
                 refresh();
