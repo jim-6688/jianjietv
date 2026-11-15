@@ -1,7 +1,6 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -15,7 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,14 +50,12 @@ final class SettingsController {
     private final View view;
     private SharedPreferences choices;
     private final TextView[] appCountChoices = new TextView[6];
-    private TextView wallpaperChoice;
+    private LinearLayout wallpaperInline;
     private View wallpaperFavoritesChoice;
     private TextView wallpaperFavoritesText;
     private ImageView wallpaperFavoritesThumb;
     /** 桌面设置里选的轮换间隔（分钟），0 表示立即生效（固定不动）。 */
     private int wallpaperInterval;
-    /** 壁纸选择对话框的引用，切换类型时先关掉旧弹窗再重建。 */
-    private AlertDialog wallpaperDialog;
 
     SettingsController(Host host, View view) {
         this.host = host;
@@ -94,8 +90,7 @@ final class SettingsController {
         }
 
         wallpaperInterval = choices.getInt(Config.WALLPAPER_INTERVAL_KEY, 0);
-        wallpaperChoice = view.findViewById(R.id.wallpaperChoice);
-        wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
+        wallpaperInline = view.findViewById(R.id.wallpaperInline);
         wallpaperFavoritesChoice = view.findViewById(R.id.wallpaperFavoritesChoice);
         wallpaperFavoritesText = view.findViewById(R.id.wallpaperFavoritesText);
         wallpaperFavoritesThumb = view.findViewById(R.id.wallpaperFavoritesThumb);
@@ -117,21 +112,18 @@ final class SettingsController {
     }
 
     /**
-     * 壁纸选择：顶部「静态壁纸 / 动态壁纸」两张大卡片左右二选一（选中态用金色描边标出，一眼可见）；
-     * 下方只展开当前类型的内容，再下面两档「立即生效 / 24 小时轮换」控制是否自动轮播。
+     * 壁纸设置直接铺在面板里（不再弹二级页面）：顶部「静态壁纸 / 动态壁纸」两张大卡片左右二选一
+     * （选中态金色描边），下方只展开当前类型的内容，再下面两档「立即生效 / 24 小时轮换」控制轮播。
+     * 每次调用都整块重建；重建前后按文字保留焦点，避免遥控器焦点丢失。
      */
-    private void showWallpaperPicker() {
-        if (wallpaperDialog != null && wallpaperDialog.isShowing()) wallpaperDialog.dismiss();
+    private void renderWallpaperInline() {
+        CharSequence focusedText = focusedTextIn(wallpaperInline);
+        wallpaperInline.removeAllViews();
         Context c = a;
-        ScrollView scroll = new ScrollView(c);
-        LinearLayout root = new LinearLayout(c);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(24, 24, 24, 24);
-
         boolean videoOn = choices.getBoolean(Config.WALLPAPER_VIDEO_KEY, false);
 
         // 顶部：静态 / 动态 二选一（左右两张卡片，选中态明显）
-        root.addView(header(c, R.string.wallpaper_type));
+        wallpaperInline.addView(header(c, R.string.wallpaper_type));
         LinearLayout typeRow = new LinearLayout(c);
         typeRow.setOrientation(LinearLayout.HORIZONTAL);
         typeRow.setLayoutParams(new LinearLayout.LayoutParams(
@@ -143,7 +135,7 @@ final class SettingsController {
                 choices.edit().remove(Config.WALLPAPER_VIDEO_KEY).apply();
                 changed();
                 refresh();
-                showWallpaperPicker();
+                refocus(wallpaperInline, staticCard.getText());
             } else {
                 staticCard.requestFocus();
             }
@@ -154,14 +146,14 @@ final class SettingsController {
                         .remove(Config.WALLPAPER_CHOICE_KEY).apply();
                 changed();
                 refresh();
-                showWallpaperPicker();
+                refocus(wallpaperInline, dynamicCard.getText());
             } else {
                 dynamicCard.requestFocus();
             }
         });
         typeRow.addView(staticCard);
         typeRow.addView(dynamicCard);
-        root.addView(typeRow);
+        wallpaperInline.addView(typeRow);
 
         // 子内容：只展示当前选中的类型
         if (videoOn) {
@@ -170,28 +162,52 @@ final class SettingsController {
             note.setTextColor(0xFFC9A96E);
             note.setTextSize(16);
             note.setPadding(12, 12, 12, 12);
-            root.addView(note);
+            wallpaperInline.addView(note);
         } else {
-            root.addView(header(c, R.string.wallpaper_choose_image));
-            addStaticItems(c, root);
+            wallpaperInline.addView(header(c, R.string.wallpaper_choose_image));
+            addStaticItems(c, wallpaperInline);
         }
 
         // 两档：立即生效 / 24 小时轮换
-        root.addView(header(c, R.string.wallpaper_mode));
+        wallpaperInline.addView(header(c, R.string.wallpaper_mode));
         LinearLayout modes = new LinearLayout(c);
         modes.setOrientation(LinearLayout.HORIZONTAL);
         modes.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         modes.addView(modeItem(c, R.string.wallpaper_immediate, 0));
         modes.addView(modeItem(c, R.string.wallpaper_24h, 1440));
-        root.addView(modes);
+        wallpaperInline.addView(modes);
 
-        scroll.addView(root);
-        wallpaperDialog = new AlertDialog.Builder(c)
-                .setTitle(R.string.wallpaper_label)
-                .setView(scroll)
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+        if (focusedText != null) refocus(wallpaperInline, focusedText);
+    }
+
+    /** 记录容器内当前获得焦点的可点击项的文字，供整块重建后按文字找回同一项。 */
+    private static CharSequence focusedTextIn(ViewGroup group) {
+        View focused = group.findFocus();
+        if (focused instanceof TextView && focused.isClickable()) return ((TextView) focused).getText();
+        return null;
+    }
+
+    /** 重建后按文字把焦点还给原来的项；找不到（例如切类型后该项已消失）就不强行抢焦点。 */
+    private static void refocus(ViewGroup group, CharSequence text) {
+        if (text == null) return;
+        for (int i = 0; i < group.getChildCount(); i++) {
+            View child = group.getChildAt(i);
+            if (child instanceof TextView && text.equals(((TextView) child).getText())) {
+                child.requestFocus();
+                return;
+            }
+            if (child instanceof ViewGroup) {
+                ViewGroup row = (ViewGroup) child;
+                for (int j = 0; j < row.getChildCount(); j++) {
+                    View item = row.getChildAt(j);
+                    if (item instanceof TextView && text.equals(((TextView) item).getText())) {
+                        item.requestFocus();
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     private TextView header(Context c, int stringRes) {
@@ -260,6 +276,11 @@ final class SettingsController {
 
     private TextView modeItem(Context c, int labelRes, int minutes) {
         TextView t = pickerItem(c, a.getString(labelRes));
+        // 两档平分一行宽度（pickerItem 默认是 MATCH_PARENT，横排里会把第二档挤出屏幕）。
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        lp.setMargins(4, 2, 4, 2);
+        t.setLayoutParams(lp);
         t.setSelected(wallpaperInterval == minutes);
         t.setOnClickListener(v -> {
             if (wallpaperInterval == minutes) return;
@@ -299,14 +320,8 @@ final class SettingsController {
         int dockCount = Config.load(a).dockCount;
         for (int i = 0; i < appCountChoices.length; i++)
             appCountChoices[i].setSelected(dockCount == i + 3);
-        String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
-        boolean videoOn = choices.getBoolean(Config.WALLPAPER_VIDEO_KEY, false);
-        String wallpaperLabel;
-        if (videoOn) wallpaperLabel = a.getString(R.string.wallpaper_dynamic_on);
-        else if ("none".equals(wallpaperCurrent)) wallpaperLabel = a.getString(R.string.wallpaper_none);
-        else if (wallpaperCurrent != null) wallpaperLabel = wallpaperCurrent;
-        else wallpaperLabel = a.getString(R.string.wallpaper_theme_default);
-        wallpaperChoice.setText(a.getString(R.string.wallpaper_state, wallpaperLabel));
+        wallpaperInterval = choices.getInt(Config.WALLPAPER_INTERVAL_KEY, 0);
+        renderWallpaperInline();
         List<File> favourites = WallpaperFavorites.files(a);
         wallpaperFavoritesText.setText(a.getString(R.string.wallpaper_favorites_state, favourites.size()));
         loadFavouriteThumb(favourites);

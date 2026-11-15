@@ -112,7 +112,7 @@
             <TextView android:id="@+id/appCount8" style="@style/SettingsColumnChoice" android:text="8" />
         </LinearLayout>
 
-        <!-- 壁纸设置 -->
+        <!-- 壁纸设置：类型二选一 + 当前类型内容 + 轮换方式，全部内联在面板里，不再进入二级页面。 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -121,10 +121,12 @@
             android:textColor="#FFACB8C1"
             android:textSize="16sp" />
 
-        <TextView
-            android:id="@+id/wallpaperChoice"
-            style="@style/SettingsRow"
-            android:layout_marginTop="16dp" />
+        <LinearLayout
+            android:id="@+id/wallpaperInline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical" />
 
         <!-- 影视源 -->
         <TextView
