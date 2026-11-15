@@ -17,6 +17,9 @@ import java.util.ArrayList;
 final class HomeDrawer implements SettingsController.Host, FilmSourcesPanel.Host {
 
     interface Callback {
+        /** 抽屉还开着时的一处改动：立刻应用到首页，不必等收起抽屉。 */
+        void onSettingsChanged();
+
         void onDrawerClosed(boolean changed, boolean reorder);
     }
 
@@ -52,12 +55,16 @@ final class HomeDrawer implements SettingsController.Host, FilmSourcesPanel.Host
     @Override
     public void changed() {
         changed = true;
+        // 每改一项就立刻落到首页：壁纸、程序坞数量、透明度在抽屉仍开着时就变了，
+        // 用户不必先返回退出设置才看到效果。
+        callback.onSettingsChanged();
     }
 
     @Override
     public void reorder() {
         reorder = true;
         changed = true;
+        // 重排要收起抽屉并进入重排模式，不能在这里就应用。
     }
 
     @Override

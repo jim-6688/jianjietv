@@ -126,18 +126,30 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** 顶栏「影视」按钮打开的内容页：豆瓣海报墙整屏叠加层（不新开窗口）。 */
     private FilmHub filmHub;
     /** 设置/来源抽屉的回调，懒初始化抽屉时复用。 */
-    private final HomeDrawer.Callback drawerCallback = (changed, reorder) -> {
-        if (reorder) {
-            getIntent().putExtra(LauncherSettingsActivity.EXTRA_REORDER, true);
-            startPendingSettingsReorder();
-            return;
+    private final HomeDrawer.Callback drawerCallback = new HomeDrawer.Callback() {
+        /**
+         * 设置在抽屉里改一下就立即落到首页：壁纸、程序坞数量、背景透明度当场就变，
+         * 用户不用先收起抽屉再回来看（以前只有 onDrawerClosed 才 applySettingsLive）。
+         */
+        @Override
+        public void onSettingsChanged() {
+            applySettingsLive();
         }
-        if (!changed) return;
-        // 设置改动实时生效，不重建首页（用户要求「无需刷新桌面即可生效」）。
-        applySettingsLive();
+
+        @Override
+        public void onDrawerClosed(boolean changed, boolean reorder) {
+            if (reorder) {
+                getIntent().putExtra(LauncherSettingsActivity.EXTRA_REORDER, true);
+                startPendingSettingsReorder();
+                return;
+            }
+            if (!changed) return;
+            // 抽屉里每次改动已经实时应用过；这里再走一遍是幂等的，兜住只在收起时才写入的项。
+            applySettingsLive();
+        }
     };
 
-    /** 重读配置并把改动实时落到首页：重排程序坞（应用数量）、换壁纸，不再 recreate。 */
+    /** 重读配置并把改动实时落到首页：重排程序坞（应用数量）、换壁纸、改透明度，不再 recreate。 */
     private void applySettingsLive() {
         settingsRevision = settingsRevision();
         Config previous = cfg;
@@ -150,7 +162,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 || previous.dockShowNames != cfg.dockShowNames
                 || previous.dockOnly != cfg.dockOnly;
         if (dockChanged) {
+            // 抽屉还开着时不要弹「卡片提示」——它会盖住用户正在操作的设置面板。
+            boolean wasPaused = promptsPaused;
+            if (homeDrawer != null && homeDrawer.isShowing()) promptsPaused = true;
             reloadApps(false);   // 改数量时重建磁贴，但不重播入场动画，避免整页闪一下
+            promptsPaused = wasPaused;
+        }
+        // 背景透明度同时管着程序坞色带、顶栏和天气卡，三者要一起跟着变。
+        if (previous == null || previous.dockOpacity != cfg.dockOpacity) {
+            if (dockDecoration != null) dockDecoration.setOpacity(cfg.dockOpacity);
+            applyCardOpacity(cfg);
+            if (grid != null) grid.invalidate();   // dock 色带由 decoration 画，重画才看得到新透明度
         }
         // 壁纸要能实时切换静态/动态；update() 只刷静态图，reconfigure 才处理视频层。
         if (wallpaperPlayer != null) wallpaperPlayer.reconfigure(this, cfg);
@@ -177,6 +199,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private AppAdapter adapter;
     private RecyclerView grid;
+    /** The dock band, kept so a new 背景透明度 repaints it without rebuilding the grid. */
+    private DockDecoration dockDecoration;
     private FrameLayout root;
     private WallpaperPlayer wallpaperPlayer;
     /** Kept so onResume can drive the still-wallpaper fetch without re-parsing the whole theme. */
@@ -783,8 +807,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(dockSpan, density, cinematic, cfg.dockShowNames, cfg.dockOpacity, cfg.dockRadius, cfg.dockPadding, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
-                singleRow, cfg.dockBandAll));
+        if (dockRow) {
+            dockDecoration = new DockDecoration(dockSpan, density, cinematic, cfg.dockShowNames, cfg.dockOpacity, cfg.dockRadius, cfg.dockPadding, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
+                    singleRow, cfg.dockBandAll);
+            grid.addItemDecoration(dockDecoration);
+        }
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
@@ -1491,12 +1518,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), 0);
         cards = moduleCards ? CardFeature.run(() -> Cards.discover(this, hiddenApps,
                 () -> Cards.load(Cards.storeFile(this)), leanback), none) : none;
-        adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none), leanback);
-        // dock_only: the row spans exactly the owner's dock_count slots (应用数量); the app library's replace-in-slot
-        // flow keeps the docked count at or below that, so the row never needs to grow past it.
+        // dock_only: the row spans exactly the owner's dock_count slots (应用数量). This has to be set BEFORE
+        // reload(): reload() decides how many tiles Home shows and how many empty slots pad the row from the
+        // current dockSize, so raising the count after it left the new slot missing until the next rebuild.
         if (cfg.dockOnly) {
             dockSpan = cfg.dockCount;
             adapter.setDockSize(dockSpan);
+        }
+        adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none), leanback);
+        // The app library's replace-in-slot flow keeps the docked count at or below that, so the row never needs
+        // to grow past it.
+        if (cfg.dockOnly) {
             ((GridLayoutManager) grid.getLayoutManager()).setSpanCount(dockSpan);
         }
         // dock_only: park the single dock row at the bottom of the screen by letting the grid wrap its one
