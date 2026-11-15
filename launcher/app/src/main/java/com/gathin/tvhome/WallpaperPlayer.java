@@ -45,7 +45,8 @@ final class WallpaperPlayer {
     private final ImageView image;
     private final int backgroundColor;
     private final List<File> files;
-    private final long interval;
+    /** 轮换间隔：设置面板的「立即生效 / 24 小时轮换」会在运行时改变它，故非 final。 */
+    private long interval;
     private final String order;
     private final SharedPreferences preferences;
     private final ExecutorService decoder = Executors.newSingleThreadExecutor();
@@ -182,6 +183,75 @@ final class WallpaperPlayer {
         }
         loading = false;
         showFirst();
+    }
+
+    /**
+     * 设置变更后实时重配壁纸：静态 / 动态运行时互切，不必重建首页。
+     * 视频层在构造时按初始配置建立，这里负责运行中按新配置建立或拆除它。
+     */
+    void reconfigure(Context context, Config config) {
+        if (closed) return;
+        interval = config.wallpaperRotationMinutes * 60_000L;
+        boolean wantVideo = config.wallpaperVideoEnabled;
+
+        if (wantVideo && videoView == null) {
+            // 静态 -> 动态：片源就绪才切，起不来就继续显示当前静态图。
+            List<String> list = WallpaperVideo.urls(context, config.wallpaperVideoManifest);
+            if (!list.isEmpty()) {
+                bringUpVideo(context, list);
+            } else if (WallpaperVideo.isRemote(config.wallpaperVideoManifest)) {
+                WallpaperVideo.fetchRemote(config.wallpaperVideoManifest, urls -> {
+                    if (!urls.isEmpty() && videoView == null && !closed) bringUpVideo(context, urls);
+                });
+            }
+            return;
+        }
+
+        if (!wantVideo && videoView != null) {
+            // 动态 -> 静态：拆掉视频层，恢复静态图。
+            tearDownVideo();
+        }
+
+        // 静态模式：同步最新的静态图片集合（收藏 / 来源变化）；集合没变就不重新解码。
+        if (videoView == null && config.wallpaperEnabled && !config.wallpapers.isEmpty()) {
+            String newKey = collectionKey(config.wallpapers);
+            if (!newKey.equals(collectionKey(files))) {
+                files.clear();
+                files.addAll(config.wallpapers);
+                preferences.edit().putString("collection", newKey)
+                        .remove("image").remove("changed").apply();
+                displayed = "";
+                loading = false;
+                showFirst();
+            }
+            if (toneListener != null && tone >= 0f) toneListener.onTone(tone);
+        }
+    }
+
+    /** 建立视频层并进入视频模式：先移走静态图，否则它会盖在视频上。 */
+    private void bringUpVideo(Context context, List<String> urls) {
+        if (image.getParent() == root) root.removeView(image);
+        if (setupVideoLayer(context, urls) && active && player != null) player.play();
+        if (toneListener != null) toneListener.onTone(0.35f); // Aerial clips are mostly dark; keep light text.
+    }
+
+    /** 拆掉视频层、释放播放器，把静态图放回视图树。 */
+    private void tearDownVideo() {
+        videoMode = false;
+        videoUrls = null;
+        lastVideoW = lastVideoH = 0;
+        if (player != null) {
+            player.release();
+            player = null;
+        }
+        if (videoView != null) {
+            root.removeView(videoView);
+            videoView = null;
+        }
+        if (image.getParent() == null) {
+            root.addView(image, 0, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
     }
 
     void start() {

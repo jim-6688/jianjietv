@@ -142,7 +142,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         settingsRevision = settingsRevision();
         cfg = Config.load(this);
         reloadApps(true);
-        if (wallpaperPlayer != null) wallpaperPlayer.update();
+        // 壁纸要能实时切换静态/动态；update() 只刷静态图，reconfigure 才处理视频层。
+        if (wallpaperPlayer != null) wallpaperPlayer.reconfigure(this, cfg);
         updateFavoriteButton();
     }
     /** Idle time on Home before ClockActivity; 0 is off (config.xml, home_idle_clock_minutes). */
