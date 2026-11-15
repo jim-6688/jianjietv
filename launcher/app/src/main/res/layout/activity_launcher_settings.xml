@@ -38,19 +38,11 @@
             android:textSize="34sp" />
 
         <!-- 收藏壁纸：置于设置最上方，右侧胶囊预览当前收藏，点击进入壁纸列表。 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="@string/favorites_settings"
-            android:textColor="#FFACB8C1"
-            android:textSize="16sp" />
-
         <LinearLayout
             android:id="@+id/wallpaperFavoritesChoice"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="28dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingStart="18dp"
@@ -81,19 +73,11 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <!-- 桌面设置 -->
+        <!-- 桌面设置（分区小字标题已去掉，保留选项行） -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="34dp"
-            android:text="@string/desktop_settings"
-            android:textColor="#FFACB8C1"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:text="@string/app_count_label"
             android:textColor="#FFFFFFFF"
             android:textSize="20sp" />
@@ -113,19 +97,11 @@
         </LinearLayout>
 
         <!-- 壁纸设置：类型二选一 + 当前类型内容 + 轮换方式，全部内联在面板里，不再进入二级页面。 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="34dp"
-            android:text="@string/wallpaper_settings"
-            android:textColor="#FFACB8C1"
-            android:textSize="16sp" />
-
         <LinearLayout
             android:id="@+id/wallpaperInline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="34dp"
             android:orientation="vertical" />
 
         <!-- 影视源 -->

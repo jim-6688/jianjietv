@@ -123,11 +123,12 @@ final class SettingsController {
         boolean videoOn = choices.getBoolean(Config.WALLPAPER_VIDEO_KEY, false);
 
         // 顶部：静态 / 动态 二选一（左右两张卡片，选中态明显）
-        wallpaperInline.addView(header(c, R.string.wallpaper_type));
         LinearLayout typeRow = new LinearLayout(c);
         typeRow.setOrientation(LinearLayout.HORIZONTAL);
-        typeRow.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams typeLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        typeLp.bottomMargin = 12;
+        typeRow.setLayoutParams(typeLp);
         TextView staticCard = typeCard(c, R.string.wallpaper_static, !videoOn);
         TextView dynamicCard = typeCard(c, R.string.wallpaper_dynamic, videoOn);
         staticCard.setOnClickListener(v -> {
@@ -164,16 +165,16 @@ final class SettingsController {
             note.setPadding(12, 12, 12, 12);
             wallpaperInline.addView(note);
         } else {
-            wallpaperInline.addView(header(c, R.string.wallpaper_choose_image));
             addStaticItems(c, wallpaperInline);
         }
 
         // 两档：立即生效 / 24 小时轮换
-        wallpaperInline.addView(header(c, R.string.wallpaper_mode));
         LinearLayout modes = new LinearLayout(c);
         modes.setOrientation(LinearLayout.HORIZONTAL);
-        modes.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams modesLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        modesLp.topMargin = 16;
+        modes.setLayoutParams(modesLp);
         modes.addView(modeItem(c, R.string.wallpaper_immediate, 0));
         modes.addView(modeItem(c, R.string.wallpaper_24h, 1440));
         wallpaperInline.addView(modes);
@@ -208,18 +209,6 @@ final class SettingsController {
                 }
             }
         }
-    }
-
-    private TextView header(Context c, int stringRes) {
-        TextView t = new TextView(c);
-        t.setText(stringRes);
-        t.setTextColor(0xFFACB8C1);
-        t.setTextSize(15);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 12, 0, 6);
-        t.setLayoutParams(lp);
-        return t;
     }
 
     /** 二选一的大卡片：左右等分，选中态有金色描边，一眼能看出当前选的是静态还是动态。 */
