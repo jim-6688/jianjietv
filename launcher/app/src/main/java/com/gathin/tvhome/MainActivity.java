@@ -1352,9 +1352,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // room above the dock and the last rows run off the bottom instead of the title drawing over the clock.
         if (this.dockRow && cfg.dockTitle && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
         // No dock to push down: the grid starts at the top, with room for the first row's zoom and glass.
-        // dock_only keeps the dock as one clean row at the top of the grid (the only thing on Home), so it uses
-        // the same small top padding the plain grid does; the bottom-push that the full dock row uses fights the
-        // RecyclerView layout and drops the tiles, so it is skipped here.
+        // In dock_only the dock is a single row parked at the bottom of the grid (set in reloadTiles via the
+        // grid's gravity, not by padding here — padding would push the row below the fold).
         if (!this.dockRow || cfg.dockOnly) want = (int) (AppAdapter.TOP_ROOM_DP * density);
         // In a single row, or a dock whose names are off, the name line under a tile is empty, so the 4dp gap
         // and 18dp line would only lift the row: sit it that much lower.
@@ -1482,6 +1481,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             adapter.setDockSize(dockSpan);
             ((GridLayoutManager) grid.getLayoutManager()).setSpanCount(dockSpan);
         }
+        // dock_only: park the single dock row at the bottom of the screen by letting the grid wrap its one
+        // row and sit at the bottom of its frame (gravity), rather than filling and relying on top padding
+        // (which pushes the row below the visible area). Non-dock layouts fill the frame as before.
+        FrameLayout.LayoutParams glp = (FrameLayout.LayoutParams) grid.getLayoutParams();
+        if (cfg.dockOnly) {
+            glp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            glp.gravity = Gravity.BOTTOM;
+        } else {
+            glp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            glp.gravity = Gravity.NO_GRAVITY;
+        }
+        grid.setLayoutParams(glp);
         // The new count decides whether a row under the dock is reserved (dock_only: never on Home, every app in an
         // edit session), so the dock is parked again rather than left where the last count put it.
         grid.post(this::parkDockRow);

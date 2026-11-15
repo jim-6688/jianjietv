@@ -63,6 +63,7 @@
     <string name="desktop_settings">Desktop</string>
     <string name="app_count_label">App count</string>
     <string name="wallpaper_settings">Wallpaper</string>
+    <string name="favorites_settings">Favourites</string>
     <string name="wallpaper_static">Static</string>
     <string name="wallpaper_dynamic">Dynamic</string>
     <string name="wallpaper_mode">Rotation</string>

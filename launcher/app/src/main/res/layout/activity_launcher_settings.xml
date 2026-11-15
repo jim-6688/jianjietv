@@ -37,6 +37,50 @@
             android:textColor="#FFFFFFFF"
             android:textSize="34sp" />
 
+        <!-- 收藏壁纸：置于设置最上方，右侧胶囊预览当前收藏，点击进入壁纸列表。 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/favorites_settings"
+            android:textColor="#FFACB8C1"
+            android:textSize="16sp" />
+
+        <LinearLayout
+            android:id="@+id/wallpaperFavoritesChoice"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:background="@drawable/settings_choice_bg"
+            android:focusable="true"
+            android:clickable="true">
+
+            <TextView
+                android:id="@+id/wallpaperFavoritesText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFFFF"
+                android:textSize="18sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <ImageView
+                android:id="@+id/wallpaperFavoritesThumb"
+                android:layout_width="76dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="12dp"
+                android:scaleType="centerCrop"
+                android:background="@drawable/capsule_bg"
+                android:clipToOutline="true"
+                android:importantForAccessibility="no"
+                android:visibility="gone" />
+        </LinearLayout>
+
         <!-- 桌面设置 -->
         <TextView
             android:layout_width="match_parent"
@@ -81,11 +125,6 @@
             android:id="@+id/wallpaperChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="16dp" />
-
-        <TextView
-            android:id="@+id/wallpaperFavoritesChoice"
-            style="@style/SettingsRow"
-            android:layout_marginTop="10dp" />
 
         <!-- 影视源 -->
         <TextView

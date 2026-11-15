@@ -7,10 +7,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -50,7 +53,9 @@ final class SettingsController {
     private SharedPreferences choices;
     private final TextView[] appCountChoices = new TextView[6];
     private TextView wallpaperChoice;
-    private TextView wallpaperFavoritesChoice;
+    private View wallpaperFavoritesChoice;
+    private TextView wallpaperFavoritesText;
+    private ImageView wallpaperFavoritesThumb;
     /** 桌面设置里选的轮换间隔（分钟），0 表示立即生效（固定不动）。 */
     private int wallpaperInterval;
     /** 壁纸选择对话框的引用，切换类型时先关掉旧弹窗再重建。 */
@@ -92,6 +97,8 @@ final class SettingsController {
         wallpaperChoice = view.findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         wallpaperFavoritesChoice = view.findViewById(R.id.wallpaperFavoritesChoice);
+        wallpaperFavoritesText = view.findViewById(R.id.wallpaperFavoritesText);
+        wallpaperFavoritesThumb = view.findViewById(R.id.wallpaperFavoritesThumb);
         wallpaperFavoritesChoice.setOnClickListener(v -> showFavourites());
         // 影视源：在同一个右侧抽屉里换页，不另开窗口。
         view.findViewById(R.id.filmSourcesChoice).setOnClickListener(v -> host.openSources());
@@ -301,6 +308,40 @@ final class SettingsController {
         else wallpaperLabel = a.getString(R.string.wallpaper_theme_default);
         wallpaperChoice.setText(a.getString(R.string.wallpaper_state, wallpaperLabel));
         List<File> favourites = WallpaperFavorites.files(a);
-        wallpaperFavoritesChoice.setText(a.getString(R.string.wallpaper_favorites_state, favourites.size()));
+        wallpaperFavoritesText.setText(a.getString(R.string.wallpaper_favorites_state, favourites.size()));
+        loadFavouriteThumb(favourites);
+    }
+
+    /** 胶囊预览：取收藏列表里的第一张作为缩略图；无收藏时隐藏胶囊。 */
+    private void loadFavouriteThumb(List<File> favourites) {
+        if (favourites == null || favourites.isEmpty()) {
+            wallpaperFavoritesThumb.setVisibility(View.GONE);
+            return;
+        }
+        Bitmap bmp = decodeSampled(favourites.get(0), 152, 76);
+        if (bmp == null) {
+            wallpaperFavoritesThumb.setVisibility(View.GONE);
+            return;
+        }
+        wallpaperFavoritesThumb.setImageBitmap(bmp);
+        wallpaperFavoritesThumb.setVisibility(View.VISIBLE);
+    }
+
+    /** 把壁纸文件按目标尺寸采样解码，避免大图直接进内存。 */
+    private static Bitmap decodeSampled(File f, int w, int h) {
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(f.getPath(), o);
+            int sw = o.outWidth, sh = o.outHeight;
+            int scale = 1;
+            while (sw / scale / 2 >= w && sh / scale / 2 >= h) scale *= 2;
+            o.inJustDecodeBounds = false;
+            o.inSampleSize = scale;
+            o.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeFile(f.getPath(), o);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
